@@ -2,7 +2,7 @@
 
 **Shell (XSL) - Digital Gold for Central Banks**
 
-This repository contains the reference implementation of Shell Reserve, a cryptocurrency designed exclusively as a reserve asset for central banks, sovereign wealth funds, and large financial institutions.
+This repository contains the **work-in-progress** reference implementation of Shell Reserve, a cryptocurrency designed exclusively as a reserve asset for central banks, sovereign wealth funds, and large financial institutions.
 
 ## 🎯 Vision
 
@@ -19,16 +19,30 @@ Shell implements a layered design that separates concerns:
 
 ## 🔧 Implementation Status
 
-This is the **Phase α (Core Chain)** implementation, featuring:
+This is the **Phase α (Core Chain)** implementation - **EARLY DEVELOPMENT**
 
-✅ **Forked from btcd** - Proven Bitcoin codebase as foundation  
-✅ **Shell-specific parameters** - 100M XSL supply, 5-minute blocks  
-✅ **RandomX PoW** - CPU-friendly mining  
-✅ **Shell network magic** - Unique network identifier  
-✅ **Genesis block** - Fair launch with constitution hash  
-✅ **Address prefixes** - xsl* addresses for Shell network  
+### ✅ Completed (Project Setup)
+- **Project Structure** - Forked btcd as foundation
+- **Git Repository** - Version control and GitHub integration
+- **Module Setup** - Go module configuration
+- **Network Magic** - Unique Shell network identifier (0x58534C4D)
+- **Basic Genesis** - Genesis block structure with constitution hash
 
-## 🚀 Key Features
+### 🚧 In Progress (Core Features)
+- **Shell Parameters** - Chain configuration (partially done)
+- **RandomX Integration** - CPU-friendly mining algorithm
+- **Confidential Transactions** - Amount hiding via Pedersen commitments
+- **Address Generation** - xsl* prefixed addresses
+- **Consensus Rules** - Shell-specific validation logic
+
+### ❌ Not Yet Started
+- **Working Build** - Code doesn't compile as Shell node yet
+- **Mining Implementation** - No functional mining
+- **RPC Interface** - Shell-specific API endpoints
+- **Network Layer** - P2P protocol modifications
+- **Testing Suite** - Shell-specific test coverage
+
+## 🚀 Planned Features
 
 - **No Premine**: Pure fair launch on January 1, 2026
 - **100M Supply Cap**: Meaningful institutional holdings
@@ -36,34 +50,52 @@ This is the **Phase α (Core Chain)** implementation, featuring:
 - **RandomX Mining**: Geographic distribution via CPU mining
 - **Institutional Focus**: Designed for central bank balance sheets
 
-## 📋 Next Steps
+## 📋 Development Roadmap
 
-The implementation roadmap follows these phases:
+**Current Phase: α.1 - Basic Implementation (25% complete)**
 
-1. **Phase α** (Months 0-3): ✅ Core Chain - DONE
-2. **Phase β** (Months 3-6): Liquidity stack & reward program  
-3. **Phase β.5** (Months 5-6): L1 Settlement primitives
-4. **Phase γ** (Months 6-9): Security hardening & vault covenants
-5. **Phase δ** (Months 9-12): Launch preparation
+1. **Phase α** (Months 0-3): 🔄 Core Chain - IN PROGRESS
+   - α.1: ✅ Project setup & basic structure  
+   - α.2: 🚧 RandomX integration
+   - α.3: ❌ Confidential transactions
+   - α.4: ❌ Taproot implementation
+
+2. **Phase β** (Months 3-6): ❌ Liquidity stack & reward program  
+3. **Phase β.5** (Months 5-6): ❌ L1 Settlement primitives
+4. **Phase γ** (Months 6-9): ❌ Security hardening & vault covenants
+5. **Phase δ** (Months 9-12): ❌ Launch preparation
 
 ## 🔗 Related Documents
 
 - [Shell Reserve White Paper](README.md) - Complete vision and design
 - [Implementation Plan](Shell%20Implementation%20Plan.md) - Detailed technical roadmap
 
-## ⚡ Quick Start
+## ⚡ Current State
 
 ```bash
 # Clone the repository
 git clone https://github.com/toole-brendan/shell.git
 cd shell
 
-# Build Shell Reserve
-go build
+# NOTE: Build currently fails - Shell features not yet implemented
+# go build  # <-- This doesn't work yet
 
-# Run tests
-go test ./...
+# Dependencies resolve correctly
+go mod tidy
+
+# Basic structure inspection
+ls -la  # See forked btcd structure with Shell modifications
 ```
+
+## ⚠️ Development Notice
+
+**This is early-stage development code.** The implementation is not functional yet and cannot:
+- Mine Shell blocks
+- Process Shell transactions  
+- Connect to Shell network
+- Generate Shell addresses
+
+This repository currently serves as the foundation for implementing Shell Reserve features on top of the proven btcd codebase.
 
 ## 🏛️ Constitutional Principles
 
@@ -79,4 +111,5 @@ Shell Reserve is governed by immutable principles:
 
 **Shell Reserve: Built to last, not to impress.**
 
-*Launch Date: January 1, 2026, 00:00 UTC* 
+*Target Launch Date: January 1, 2026, 00:00 UTC*  
+*Current Status: Early Development (Phase α.1)* 
