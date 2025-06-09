@@ -27,10 +27,10 @@ This is the **Phase α (Core Chain)** implementation - **EARLY DEVELOPMENT**
 - **Module Setup** - Go module configuration
 - **Network Magic** - Unique Shell network identifier (0x58534C4D)
 - **Basic Genesis** - Genesis block structure with constitution hash
+- **Shell Parameters** - Chain configuration (complete)
+- **RandomX Integration** - CPU-friendly mining algorithm (stub implementation)
 
 ### 🚧 In Progress (Core Features)
-- **Shell Parameters** - Chain configuration (partially done)
-- **RandomX Integration** - CPU-friendly mining algorithm
 - **Confidential Transactions** - Amount hiding via Pedersen commitments
 - **Address Generation** - xsl* prefixed addresses
 - **Consensus Rules** - Shell-specific validation logic
@@ -52,12 +52,12 @@ This is the **Phase α (Core Chain)** implementation - **EARLY DEVELOPMENT**
 
 ## 📋 Development Roadmap
 
-**Current Phase: α.1 - Basic Implementation (25% complete)**
+**Current Phase: α.2 - RandomX Integration (50% complete)**
 
 1. **Phase α** (Months 0-3): 🔄 Core Chain - IN PROGRESS
    - α.1: ✅ Project setup & basic structure  
-   - α.2: 🚧 RandomX integration
-   - α.3: ❌ Confidential transactions
+   - α.2: ✅ RandomX integration (stub implementation)
+   - α.3: 🚧 Confidential transactions
    - α.4: ❌ Taproot implementation
 
 2. **Phase β** (Months 3-6): ❌ Liquidity stack & reward program  
@@ -77,11 +77,14 @@ This is the **Phase α (Core Chain)** implementation - **EARLY DEVELOPMENT**
 git clone https://github.com/toole-brendan/shell.git
 cd shell
 
-# NOTE: Build currently fails - Shell features not yet implemented
-# go build  # <-- This doesn't work yet
-
 # Dependencies resolve correctly
 go mod tidy
+
+# RandomX mining package compiles
+go build ./mining/randomx/...
+
+# NOTE: Full node build still fails - more features needed
+# go build  # <-- This doesn't work yet
 
 # Basic structure inspection
 ls -la  # See forked btcd structure with Shell modifications
@@ -90,10 +93,16 @@ ls -la  # See forked btcd structure with Shell modifications
 ## ⚠️ Development Notice
 
 **This is early-stage development code.** The implementation is not functional yet and cannot:
-- Mine Shell blocks
+- Mine Shell blocks (RandomX stub only)
 - Process Shell transactions  
 - Connect to Shell network
 - Generate Shell addresses
+
+### Recent Progress
+- ✅ Shell network parameters configured (MainNet: 0x58534C4D)
+- ✅ RandomX mining package structure created
+- ✅ Mining configuration and utilities implemented
+- ✅ Stub RandomX implementation (real RandomX C++ bindings needed)
 
 This repository currently serves as the foundation for implementing Shell Reserve features on top of the proven btcd codebase.
 
@@ -112,4 +121,4 @@ Shell Reserve is governed by immutable principles:
 **Shell Reserve: Built to last, not to impress.**
 
 *Target Launch Date: January 1, 2026, 00:00 UTC*  
-*Current Status: Early Development (Phase α.1)* 
+*Current Status: Early Development (Phase α.2)* 

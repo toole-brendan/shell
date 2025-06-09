@@ -1,11 +1,11 @@
- # Shell Reserve: A Layered Digital Reserve Asset for the 21st Century
+ # Shell: A Layered Digital Reserve Asset for the 21st Century
 
 **Version 2.2**  
 **June 2025**
 
 ## Abstract
 
-Shell Reserve (XSL) is a cryptocurrency architected exclusively as a reserve asset for central banks, sovereign wealth funds, and large financial institutions. By implementing a layered design that separates consensus, privacy, custody, and settlement functions, Shell Reserve delivers institutional-grade functionality while maintaining the censorship resistance and political neutrality essential for a global reserve asset.
+Shell (XSL) is a cryptocurrency architected exclusively as a reserve asset for central banks, sovereign wealth funds, and large financial institutions. By implementing a layered design that separates consensus, privacy, custody, and settlement functions, Shell Reserve delivers institutional-grade functionality while maintaining the censorship resistance and political neutrality essential for a global reserve asset.
 
 Unlike existing cryptocurrencies that attempt to serve multiple use cases, Shell Reserve optimizes solely for multi-decade balance sheet holdings. This focused approach enables design decisions that prioritize security, predictability, and auditability over scalability or innovation, creating a true digital analogue to gold reserves.
 
@@ -42,7 +42,7 @@ Yet existing alternatives fall short:
 - **CBDCs**: Politically controlled, limited to domestic use
 - **Stablecoins**: Inherit the political risk of underlying fiat
 
-### 1.2 Shell Reserve's Solution
+### 1.2 Shell's Solution
 
 Shell Reserve provides what none of these alternatives can: a politically neutral, technically robust digital reserve asset designed specifically for institutional balance sheets. By combining proven blockchain primitives with institutional-grade features in a layered architecture, Shell Reserve creates "digital gold" that central banks can hold with confidence for generations.
 
