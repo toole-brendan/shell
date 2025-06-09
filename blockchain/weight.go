@@ -5,11 +5,14 @@
 package blockchain
 
 import (
+	"github.com/toole-brendan/shell/internal/convert"
+)
+import (
 	"fmt"
 
 	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/txscript"
-	"github.com/btcsuite/btcd/wire"
+	"github.com/toole-brendan/shell/txscript"
+	"github.com/toole-brendan/shell/wire"
 )
 
 const (
@@ -95,7 +98,7 @@ func GetSigOpCost(tx *btcutil.Tx, isCoinBaseTx bool, utxoView *UtxoViewpoint, bi
 		for txInIndex, txIn := range msgTx.TxIn {
 			// Ensure the referenced output is available and hasn't
 			// already been spent.
-			utxo := utxoView.LookupEntry(txIn.PreviousOutPoint)
+			utxo := utxoView.LookupEntry(convert.OutPointToShell(&txIn.PreviousOutPoint))
 			if utxo == nil || utxo.IsSpent() {
 				str := fmt.Sprintf("output %v referenced from "+
 					"transaction %s:%d either does not "+

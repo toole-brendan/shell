@@ -11,8 +11,9 @@ import (
 	"time"
 
 	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/txscript"
-	"github.com/btcsuite/btcd/wire"
+	"github.com/toole-brendan/shell/txscript"
+	"github.com/toole-brendan/shell/wire"
+	"github.com/toole-brendan/shell/internal/convert"
 )
 
 // txValidateItem holds a transaction along with which input to validate.
@@ -57,7 +58,7 @@ out:
 		case txVI := <-v.validateChan:
 			// Ensure the referenced input utxo is available.
 			txIn := txVI.txIn
-			utxo := v.utxoView.LookupEntry(txIn.PreviousOutPoint)
+			utxo := v.utxoView.LookupEntry(convert.OutPointToShell(&txIn.PreviousOutPoint))
 			if utxo == nil {
 				str := fmt.Sprintf("unable to find unspent "+
 					"output %v referenced from "+
@@ -202,7 +203,7 @@ func ValidateTransactionScripts(tx *btcutil.Tx, utxoView *UtxoViewpoint,
 	// transaction, then we'll compute them now so we can re-use them
 	// amongst all worker validation goroutines.
 	if segwitActive && tx.MsgTx().HasWitness() &&
-		!hashCache.ContainsHashes(tx.Hash()) {
+		!hashCache.ContainsHashes(convert.HashToShell(tx.Hash())) {
 		hashCache.AddSigHashes(tx.MsgTx(), utxoView)
 	}
 
@@ -213,7 +214,7 @@ func ValidateTransactionScripts(tx *btcutil.Tx, utxoView *UtxoViewpoint,
 		// pre-computing the sighash here instead of during validation,
 		// we ensure the sighashes
 		// are only computed once.
-		cachedHashes, _ = hashCache.GetSigHashes(tx.Hash())
+		cachedHashes, _ = hashCache.GetSigHashes(convert.HashToShell(tx.Hash()))
 	}
 
 	// Collect all of the transaction inputs and required information for
@@ -314,7 +315,7 @@ func checkBlockScripts(block *btcutil.Block, utxoView *UtxoViewpoint,
 	if segwitActive && hashCache != nil {
 		for _, tx := range block.Transactions() {
 			if tx.MsgTx().HasWitness() {
-				hashCache.PurgeSigHashes(tx.Hash())
+				hashCache.PurgeSigHashes(convert.HashToShell(tx.Hash()))
 			}
 		}
 	}

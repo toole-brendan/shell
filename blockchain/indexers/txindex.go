@@ -8,11 +8,12 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/btcsuite/btcd/blockchain"
+	"github.com/toole-brendan/shell/blockchain"
 	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/database"
-	"github.com/btcsuite/btcd/wire"
+	"github.com/toole-brendan/shell/chaincfg/chainhash"
+	"github.com/toole-brendan/shell/database"
+	"github.com/toole-brendan/shell/wire"
+	"github.com/toole-brendan/shell/internal/convert"
 )
 
 const (
@@ -270,7 +271,7 @@ func dbRemoveTxIndexEntry(dbTx database.Tx, txHash *chainhash.Hash) error {
 // latest transaction entry for every transaction in the passed block.
 func dbRemoveTxIndexEntries(dbTx database.Tx, block *btcutil.Block) error {
 	for _, tx := range block.Transactions() {
-		err := dbRemoveTxIndexEntry(dbTx, tx.Hash())
+		err := dbRemoveTxIndexEntry(dbTx, convert.HashToShell(tx.Hash()))
 		if err != nil {
 			return err
 		}
@@ -423,7 +424,7 @@ func (idx *TxIndex) DisconnectBlock(dbTx database.Tx, block *btcutil.Block,
 
 	// Remove the block ID index entry for the block being disconnected and
 	// decrement the current internal block ID to account for it.
-	if err := dbRemoveBlockIDIndexEntry(dbTx, block.Hash()); err != nil {
+	if err := dbRemoveBlockIDIndexEntry(dbTx, convert.HashToShell(block.Hash())); err != nil {
 		return err
 	}
 	idx.curBlockID--

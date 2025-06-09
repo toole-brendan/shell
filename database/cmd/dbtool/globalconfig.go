@@ -12,10 +12,10 @@ import (
 	"slices"
 
 	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcd/database"
-	_ "github.com/btcsuite/btcd/database/ffldb"
-	"github.com/btcsuite/btcd/wire"
+	"github.com/toole-brendan/shell/chaincfg"
+	"github.com/toole-brendan/shell/database"
+	_ "github.com/toole-brendan/shell/database/ffldb"
+	"github.com/toole-brendan/shell/wire"
 )
 
 var (

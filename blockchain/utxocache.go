@@ -5,16 +5,19 @@
 package blockchain
 
 import (
+	"github.com/toole-brendan/shell/internal/convert"
+)
+import (
 	"container/list"
 	"fmt"
 	"sync"
 	"time"
 
 	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/database"
-	"github.com/btcsuite/btcd/txscript"
-	"github.com/btcsuite/btcd/wire"
+	"github.com/toole-brendan/shell/chaincfg/chainhash"
+	"github.com/toole-brendan/shell/database"
+	"github.com/toole-brendan/shell/txscript"
+	"github.com/toole-brendan/shell/wire"
 )
 
 // mapSlice is a slice of maps for utxo entries.  The slice of maps are needed to
@@ -377,7 +380,7 @@ func (s *utxoCache) addTxOuts(tx *btcutil.Tx, blockHeight int32) error {
 	// Loop all of the transaction outputs and add those which are not
 	// provably unspendable.
 	isCoinBase := IsCoinBase(tx)
-	prevOut := wire.OutPoint{Hash: *tx.Hash()}
+	prevOut := wire.OutPoint{Hash: *convert.HashToShell(tx.Hash()),}
 	for txOutIdx, txOut := range tx.MsgTx().TxOut {
 		// Update existing entries.  All fields are updated because it's
 		// possible (although extremely unlikely) that the existing
@@ -633,7 +636,7 @@ func (b *BlockChain) InitConsistentState(tip *blockNode, interrupt <-chan struct
 	}
 
 	// If state is consistent, we are done.
-	if statusHash.IsEqual(&tip.hash) {
+	if statusHash.IsEqual(convert.HashToBtc(&tip.hash)) {
 		log.Debugf("UTXO state consistent at (%d:%v)", tip.height, tip.hash)
 
 		// The last flush hash is set to the default value of all 0s. Set

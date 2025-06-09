@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/btcsuite/btcd/blockchain"
+	"github.com/toole-brendan/shell/blockchain"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btclog"
 )

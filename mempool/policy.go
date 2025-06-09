@@ -5,13 +5,16 @@
 package mempool
 
 import (
+	"github.com/toole-brendan/shell/internal/convert"
+)
+import (
 	"fmt"
 	"time"
 
-	"github.com/btcsuite/btcd/blockchain"
+	"github.com/toole-brendan/shell/blockchain"
 	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/txscript"
-	"github.com/btcsuite/btcd/wire"
+	"github.com/toole-brendan/shell/txscript"
+	"github.com/toole-brendan/shell/wire"
 )
 
 const (
@@ -98,7 +101,7 @@ func checkInputsStandard(tx *btcutil.Tx, utxoView *blockchain.UtxoViewpoint) err
 		// It is safe to elide existence and index checks here since
 		// they have already been checked prior to calling this
 		// function.
-		entry := utxoView.LookupEntry(txIn.PreviousOutPoint)
+		entry := utxoView.LookupEntry(convert.OutPointToShell(&txIn.PreviousOutPoint))
 		originPkScript := entry.PkScript()
 		switch txscript.GetScriptClass(originPkScript) {
 		case txscript.ScriptHashTy:

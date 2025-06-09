@@ -11,9 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/wire"
+	"github.com/toole-brendan/shell/chaincfg/chainhash"
+	"github.com/toole-brendan/shell/wire"
 	"github.com/btcsuite/btclog"
 )
 
@@ -388,7 +387,7 @@ out:
 		// true a solution was found, so submit it to the network.
 		// The submitted block is not guaranteed to be on the main chain.
 		if m.solveBlock(template.Block, template.Height, ticker, quit, &cfg.RandomXParams) {
-			block := btcutil.NewBlock(template.Block)
+			block := convert.NewShellBlock(template.Block)
 
 			// Submit the solved block.
 			err := cfg.SubmitBlock(block)

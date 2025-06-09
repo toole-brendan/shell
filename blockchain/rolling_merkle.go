@@ -4,7 +4,7 @@ import (
 	"math/bits"
 
 	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
+	"github.com/toole-brendan/shell/chaincfg/chainhash"
 )
 
 // rollingMerkleTreeStore calculates the merkle root by only allocating O(logN)

@@ -10,12 +10,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/btcsuite/btcd/blockchain"
+	"github.com/toole-brendan/shell/blockchain"
 	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/txscript"
-	"github.com/btcsuite/btcd/wire"
+	"github.com/toole-brendan/shell/chaincfg"
+	"github.com/toole-brendan/shell/chaincfg/chainhash"
+	"github.com/toole-brendan/shell/txscript"
+	"github.com/toole-brendan/shell/wire"
+	"github.com/toole-brendan/shell/internal/convert"
 )
 
 const (
@@ -283,7 +284,7 @@ func createCoinbaseTx(params *chaincfg.Params, coinbaseScript []byte, nextBlockH
 		Value:    blockchain.CalcBlockSubsidy(nextBlockHeight, params),
 		PkScript: pkScript,
 	})
-	return btcutil.NewTx(tx), nil
+	return convert.NewShellTx(tx), nil
 }
 
 // spendTransaction updates the passed view by marking the inputs to the passed
@@ -291,7 +292,7 @@ func createCoinbaseTx(params *chaincfg.Params, coinbaseScript []byte, nextBlockH
 // which are not provably unspendable as available unspent transaction outputs.
 func spendTransaction(utxoView *blockchain.UtxoViewpoint, tx *btcutil.Tx, height int32) error {
 	for _, txIn := range tx.MsgTx().TxIn {
-		entry := utxoView.LookupEntry(txIn.PreviousOutPoint)
+		entry := utxoView.LookupEntry(convert.OutPointToShell(&txIn.PreviousOutPoint))
 		if entry != nil {
 			entry.Spend()
 		}
@@ -310,7 +311,7 @@ func logSkippedDeps(tx *btcutil.Tx, deps map[chainhash.Hash]*txPrioItem) {
 
 	for _, item := range deps {
 		log.Tracef("Skipping tx %s since it depends on %s\n",
-			item.tx.Hash(), tx.Hash())
+			item.tx.Hash(), convert.HashToShell(tx.Hash()))
 	}
 }
 
@@ -510,13 +511,13 @@ mempoolLoop:
 		// non-finalized transactions.
 		tx := txDesc.Tx
 		if blockchain.IsCoinBase(tx) {
-			log.Tracef("Skipping coinbase tx %s", tx.Hash())
+			log.Tracef("Skipping coinbase tx %s", convert.HashToShell(tx.Hash()))
 			continue
 		}
 		if !blockchain.IsFinalizedTransaction(tx, nextBlockHeight,
 			g.timeSource.AdjustedTime()) {
 
-			log.Tracef("Skipping non-finalized tx %s", tx.Hash())
+			log.Tracef("Skipping non-finalized tx %s", convert.HashToShell(tx.Hash()))
 			continue
 		}
 
@@ -538,7 +539,7 @@ mempoolLoop:
 		prioItem := &txPrioItem{tx: tx}
 		for _, txIn := range tx.MsgTx().TxIn {
 			originHash := &txIn.PreviousOutPoint.Hash
-			entry := utxos.LookupEntry(txIn.PreviousOutPoint)
+			entry := utxos.LookupEntry(convert.OutPointToShell(&txIn.PreviousOutPoint))
 			if entry == nil || entry.IsSpent() {
 				if !g.txSource.HaveTransaction(originHash) {
 					log.Tracef("Skipping tx %s because it "+
@@ -635,7 +636,7 @@ mempoolLoop:
 			// Therefore, we account for the additional weight
 			// within the block with a model coinbase tx with a
 			// witness commitment.
-			coinbaseCopy := btcutil.NewTx(coinbaseTx.MsgTx().Copy())
+			coinbaseCopy := convert.NewShellTx(coinbaseTx.MsgTx().Copy())
 			coinbaseCopy.MsgTx().TxIn[0].Witness = [][]byte{
 				bytes.Repeat([]byte("a"),
 					blockchain.CoinbaseWitnessDataLen),
@@ -658,7 +659,7 @@ mempoolLoop:
 		}
 
 		// Grab any transactions which depend on this one.
-		deps := dependers[*tx.Hash()]
+		deps := dependers[*convert.HashToShell(tx.Hash())]
 
 		// Enforce maximum block size.  Also check for overflow.
 		txWeight := uint32(blockchain.GetTransactionWeight(tx))
@@ -667,7 +668,7 @@ mempoolLoop:
 			blockPlusTxWeight >= g.policy.BlockMaxWeight {
 
 			log.Tracef("Skipping tx %s because it would exceed "+
-				"the max block weight", tx.Hash())
+				"the max block weight", convert.HashToShell(tx.Hash()))
 			logSkippedDeps(tx, deps)
 			continue
 		}
@@ -685,7 +686,7 @@ mempoolLoop:
 		if blockSigOpCost+int64(sigOpCost) < blockSigOpCost ||
 			blockSigOpCost+int64(sigOpCost) > blockchain.MaxBlockSigOpsCost {
 			log.Tracef("Skipping tx %s because it would "+
-				"exceed the maximum sigops per block", tx.Hash())
+				"exceed the maximum sigops per block", convert.HashToShell(tx.Hash()))
 			logSkippedDeps(tx, deps)
 			continue
 		}
@@ -779,7 +780,7 @@ mempoolLoop:
 		for _, item := range deps {
 			// Add the transaction to the priority queue if there
 			// are no more dependencies after this one.
-			delete(item.dependsOn, *tx.Hash())
+			delete(item.dependsOn, *convert.HashToShell(tx.Hash()))
 			if len(item.dependsOn) == 0 {
 				heap.Push(priorityQueue, item)
 			}
@@ -837,7 +838,7 @@ mempoolLoop:
 	// Finally, perform a full check on the created block against the chain
 	// consensus rules to ensure it properly connects to the current best
 	// chain with no issues.
-	block := btcutil.NewBlock(&msgBlock)
+	block := convert.NewShellBlock(&msgBlock)
 	block.SetHeight(nextBlockHeight)
 	if err := g.chain.CheckConnectBlockTemplate(block); err != nil {
 		return nil, err
@@ -946,7 +947,7 @@ func (g *BlkTmplGenerator) UpdateExtraNonce(msgBlock *wire.MsgBlock, blockHeight
 	// block.Transactions[0].InvalidateCache()
 
 	// Recalculate the merkle root with the updated extra nonce.
-	block := btcutil.NewBlock(msgBlock)
+	block := convert.NewShellBlock(msgBlock)
 	merkleRoot := blockchain.CalcMerkleRoot(block.Transactions(), false)
 	msgBlock.Header.MerkleRoot = merkleRoot
 	return nil

@@ -26,7 +26,7 @@
 //	        "log"
 //
 //	        "github.com/btcsuite/btcd/btcutil"
-//	        "github.com/btcsuite/btcd/chaincfg"
+//	        "github.com/toole-brendan/shell/chaincfg"
 //	)
 //
 //	var testnet = flag.Bool("testnet", false, "operate on the testnet Bitcoin network")
@@ -46,7 +46,7 @@
 //
 //	        // Create and print new payment address, specific to the active network.
 //	        pubKeyHash := make([]byte, 20)
-//	        addr, err := btcutil.NewAddressPubKeyHash(pubKeyHash, chainParams)
+//	        addr, err := btcutil.NewAddressPubKeyHash(pubKeyHash, convert.ParamsToBtc(chainParams))
 //	        if err != nil {
 //	                log.Fatal(err)
 //	        }
@@ -59,3 +59,7 @@
 // should be unique to the network, but parameter collisions can still occur
 // (unfortunately, this is the case with regtest and testnet3 sharing magics).
 package chaincfg
+
+import (
+	"github.com/toole-brendan/shell/internal/convert"
+)

@@ -13,9 +13,10 @@ import (
 	"time"
 
 	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/database"
-	"github.com/btcsuite/btcd/wire"
+	"github.com/toole-brendan/shell/chaincfg/chainhash"
+	"github.com/toole-brendan/shell/database"
+	"github.com/toole-brendan/shell/wire"
+	"github.com/toole-brendan/shell/internal/convert"
 )
 
 // importCmd defines the configuration options for the insecureimport command.
@@ -120,7 +121,7 @@ func (bi *blockImporter) processBlock(serializedBlock []byte) (bool, error) {
 	// Skip blocks that already exist.
 	var exists bool
 	err = bi.db.View(func(tx database.Tx) error {
-		exists, err = tx.HasBlock(block.Hash())
+		exists, err = tx.HasBlock(convert.HashToShell(block.Hash()))
 		return err
 	})
 	if err != nil {

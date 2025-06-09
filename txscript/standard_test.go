@@ -5,6 +5,9 @@
 package txscript
 
 import (
+	"github.com/toole-brendan/shell/internal/convert"
+)
+import (
 	"bytes"
 	"encoding/hex"
 	"errors"
@@ -12,8 +15,8 @@ import (
 	"testing"
 
 	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcd/wire"
+	"github.com/toole-brendan/shell/chaincfg"
+	"github.com/toole-brendan/shell/wire"
 )
 
 // mustParseShortForm parses the passed short form script and returns the
@@ -49,7 +52,7 @@ func newAddressPubKey(serializedPubKey []byte) btcutil.Address {
 // as a helper since the only way it can fail is if there is an error in the
 // test source code.
 func newAddressPubKeyHash(pkHash []byte) btcutil.Address {
-	addr, err := btcutil.NewAddressPubKeyHash(pkHash, &chaincfg.MainNetParams)
+	addr, err := btcutil.NewAddressPubKeyHash(pkHash, convert.ParamsToBtc(&chaincfg.MainNetParams))
 	if err != nil {
 		panic("invalid public key hash in test source")
 	}

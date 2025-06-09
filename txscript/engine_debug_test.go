@@ -9,7 +9,7 @@ import (
 
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
-	"github.com/btcsuite/btcd/wire"
+	"github.com/toole-brendan/shell/wire"
 	"github.com/stretchr/testify/require"
 )
 

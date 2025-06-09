@@ -10,10 +10,10 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
+	"github.com/toole-brendan/shell/chaincfg/chainhash"
 
 	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/wire"
+	"github.com/toole-brendan/shell/wire"
 )
 
 // GetBlockHeaderVerboseResult models the data from the getblockheader command when

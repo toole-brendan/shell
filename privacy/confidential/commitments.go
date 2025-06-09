@@ -12,7 +12,7 @@ import (
 	"math/big"
 
 	"github.com/btcsuite/btcd/btcec/v2"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
+	"github.com/toole-brendan/shell/chaincfg/chainhash"
 )
 
 const (

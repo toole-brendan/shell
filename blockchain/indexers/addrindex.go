@@ -9,13 +9,14 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/btcsuite/btcd/blockchain"
+	"github.com/toole-brendan/shell/blockchain"
 	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/database"
-	"github.com/btcsuite/btcd/txscript"
-	"github.com/btcsuite/btcd/wire"
+	"github.com/toole-brendan/shell/chaincfg"
+	"github.com/toole-brendan/shell/chaincfg/chainhash"
+	"github.com/toole-brendan/shell/database"
+	"github.com/toole-brendan/shell/txscript"
+	"github.com/toole-brendan/shell/wire"
+	"github.com/toole-brendan/shell/internal/convert"
 )
 
 const (
@@ -761,7 +762,7 @@ func (idx *AddrIndex) ConnectBlock(dbTx database.Tx, block *btcutil.Block,
 	}
 
 	// Get the internal block ID associated with the block.
-	blockID, err := dbFetchBlockIDByHash(dbTx, block.Hash())
+	blockID, err := dbFetchBlockIDByHash(dbTx, convert.HashToShell(block.Hash()))
 	if err != nil {
 		return err
 	}
@@ -874,13 +875,13 @@ func (idx *AddrIndex) indexUnconfirmedAddresses(pkScript []byte, tx *btcutil.Tx)
 			addrIndexEntry = make(map[chainhash.Hash]*btcutil.Tx)
 			idx.txnsByAddr[addrKey] = addrIndexEntry
 		}
-		addrIndexEntry[*tx.Hash()] = tx
+		addrIndexEntry[*convert.HashToShell(tx.Hash())] = tx
 
 		// Add a mapping from the transaction to the address.
-		addrsByTxEntry := idx.addrsByTx[*tx.Hash()]
+		addrsByTxEntry := idx.addrsByTx[convert.HashToShell(tx.Hash()))]
 		if addrsByTxEntry == nil {
 			addrsByTxEntry = make(map[[addrKeySize]byte]struct{})
-			idx.addrsByTx[*tx.Hash()] = addrsByTxEntry
+			idx.addrsByTx[convert.HashToShell(tx.Hash()))] = addrsByTxEntry
 		}
 		addrsByTxEntry[addrKey] = struct{}{}
 		idx.unconfirmedLock.Unlock()
@@ -903,7 +904,7 @@ func (idx *AddrIndex) AddUnconfirmedTx(tx *btcutil.Tx, utxoView *blockchain.Utxo
 	// transaction has already been validated and thus all inputs are
 	// already known to exist.
 	for _, txIn := range tx.MsgTx().TxIn {
-		entry := utxoView.LookupEntry(txIn.PreviousOutPoint)
+		entry := utxoView.LookupEntry(convert.OutPointToShell(&txIn.PreviousOutPoint))
 		if entry == nil {
 			// Ignore missing entries.  This should never happen
 			// in practice since the function comments specifically

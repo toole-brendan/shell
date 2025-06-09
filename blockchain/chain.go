@@ -12,11 +12,12 @@ import (
 	"time"
 
 	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/database"
-	"github.com/btcsuite/btcd/txscript"
-	"github.com/btcsuite/btcd/wire"
+	"github.com/toole-brendan/shell/chaincfg"
+	"github.com/toole-brendan/shell/chaincfg/chainhash"
+	"github.com/toole-brendan/shell/database"
+	"github.com/toole-brendan/shell/txscript"
+	"github.com/toole-brendan/shell/wire"
+	"github.com/toole-brendan/shell/internal/convert"
 )
 
 const (
@@ -326,7 +327,7 @@ func (b *BlockChain) addOrphanBlock(block *btcutil.Block) {
 		block:      block,
 		expiration: expiration,
 	}
-	b.orphans[*block.Hash()] = oBlock
+	b.orphans[*convert.HashToShell(block.Hash())] = oBlock
 
 	// Add to previous hash lookup index for faster dependency lookups.
 	prevHash := &block.MsgBlock().Header.PrevBlock
@@ -405,7 +406,7 @@ func (b *BlockChain) calcSequenceLock(node *blockNode, tx *btcutil.Tx, utxoView 
 	nextHeight := node.height + 1
 
 	for txInIndex, txIn := range mTx.TxIn {
-		utxo := utxoView.LookupEntry(txIn.PreviousOutPoint)
+		utxo := utxoView.LookupEntry(convert.OutPointToShell(&txIn.PreviousOutPoint))
 		if utxo == nil {
 			str := fmt.Sprintf("output %v referenced from "+
 				"transaction %s:%d either does not exist or "+
@@ -796,7 +797,7 @@ func (b *BlockChain) disconnectBlock(node *blockNode, block *btcutil.Block, view
 
 		// Update the transaction spend journal by removing the record
 		// that contains all txos spent by the block.
-		err = dbRemoveSpendJournalEntry(dbTx, block.Hash())
+		err = dbRemoveSpendJournalEntry(dbTx, convert.HashToShell(block.Hash()))
 		if err != nil {
 			return err
 		}
@@ -1039,7 +1040,7 @@ func (b *BlockChain) verifyReorganizationValidity(detachNodes, attachNodes *list
 			return nil, nil, nil, AssertError(
 				fmt.Sprintf("detach block node hash %v (height "+
 					"%v) does not match previous parent block hash %v",
-					&n.hash, n.height, block.Hash()))
+					&n.hash, n.height, convert.HashToShell(block.Hash())))
 		}
 
 		// Load all of the utxos referenced by the block that aren't
@@ -1244,7 +1245,7 @@ func (b *BlockChain) connectBestChain(node *blockNode, block *btcutil.Block, fla
 	}
 	if fastAdd {
 		log.Warnf("fastAdd set in the side chain case? %v\n",
-			block.Hash())
+			convert.HashToShell(block.Hash()))
 	}
 
 	// We're extending (or creating) a side chain, but the cumulative
@@ -2254,4 +2255,9 @@ func (b *BlockChain) CachedStateSize() uint64 {
 	b.chainLock.Lock()
 	defer b.chainLock.Unlock()
 	return b.utxoCache.totalMemoryUsage()
+}
+
+// CalcSequenceLock calculates the sequence lock for a transaction
+func (b *BlockChain) CalcSequenceLock(tx *btcutil.Tx, view *UtxoViewpoint, mempool bool) (*SequenceLock, error) {
+	return b.calcSequenceLock(b.bestChain.Tip(), tx, view, mempool)
 }

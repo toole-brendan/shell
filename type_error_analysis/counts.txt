@@ -1,0 +1,8 @@
+Pattern counts:
+
+btcutil.NewBlock type errors:        0
+btcutil.NewTx type errors:        0
+Hash type mismatches:        0
+OutPoint type mismatches:        0
+TxOut type mismatches:        0
+Interface implementation issues:        0

@@ -12,8 +12,8 @@ import (
 	"github.com/btcsuite/btcd/btcutil"
 
 	"github.com/btcsuite/btcd/btcec/v2/ecdsa"
-	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcd/wire"
+	"github.com/toole-brendan/shell/chaincfg"
+	"github.com/toole-brendan/shell/wire"
 )
 
 // RawTxInWitnessSignature returns the serialized ECDA signature for the input

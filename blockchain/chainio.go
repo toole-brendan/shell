@@ -13,9 +13,10 @@ import (
 	"time"
 
 	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/database"
-	"github.com/btcsuite/btcd/wire"
+	"github.com/toole-brendan/shell/chaincfg/chainhash"
+	"github.com/toole-brendan/shell/database"
+	"github.com/toole-brendan/shell/wire"
+	"github.com/toole-brendan/shell/internal/convert"
 )
 
 const (
@@ -1073,7 +1074,7 @@ func dbFetchUtxoStateConsistency(dbTx database.Tx) []byte {
 // the genesis block, so it must only be called on an uninitialized database.
 func (b *BlockChain) createChainState() error {
 	// Create a new node from the genesis block and set it as the best node.
-	genesisBlock := btcutil.NewBlock(b.chainParams.GenesisBlock)
+	genesisBlock := convert.NewShellBlock(b.chainParams.GenesisBlock)
 	genesisBlock.SetHeight(0)
 	header := &genesisBlock.MsgBlock().Header
 	node := newBlockNode(header, nil)
@@ -1302,7 +1303,7 @@ func (b *BlockChain) initChainState() error {
 
 		// Initialize the state related to the best block.
 		blockSize := uint64(len(blockBytes))
-		blockWeight := uint64(GetBlockWeight(btcutil.NewBlock(&block)))
+		blockWeight := uint64(GetBlockWeight(convert.NewShellBlock(&block)))
 		numTxns := uint64(len(block.Transactions))
 		b.stateSnapshot = newBestState(tip, blockSize, blockWeight,
 			numTxns, state.totalTxns, CalcPastMedianTime(tip))
@@ -1411,7 +1412,7 @@ func dbStoreBlockNode(dbTx database.Tx, node *blockNode) error {
 // dbStoreBlock stores the provided block in the database if it is not already
 // there. The full block data is written to ffldb.
 func dbStoreBlock(dbTx database.Tx, block *btcutil.Block) error {
-	hasBlock, err := dbTx.HasBlock(block.Hash())
+	hasBlock, err := dbTx.HasBlock(convert.HashToShell(block.Hash()))
 	if err != nil {
 		return err
 	}

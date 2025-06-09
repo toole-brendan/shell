@@ -17,14 +17,15 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/btcsuite/btcd/blockchain"
-	"github.com/btcsuite/btcd/blockchain/internal/testhelper"
+	"github.com/toole-brendan/shell/blockchain"
+	"github.com/toole-brendan/shell/blockchain/internal/testhelper"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/txscript"
-	"github.com/btcsuite/btcd/wire"
+	"github.com/toole-brendan/shell/chaincfg"
+	"github.com/toole-brendan/shell/chaincfg/chainhash"
+	"github.com/toole-brendan/shell/txscript"
+	"github.com/toole-brendan/shell/wire"
+	"github.com/toole-brendan/shell/internal/convert"
 )
 
 const (
@@ -237,7 +238,7 @@ func calcMerkleRoot(txns []*wire.MsgTx) chainhash.Hash {
 
 	utilTxns := make([]*btcutil.Tx, 0, len(txns))
 	for _, tx := range txns {
-		utilTxns = append(utilTxns, btcutil.NewTx(tx))
+		utilTxns = append(utilTxns, convert.NewShellTx(tx))
 	}
 	return blockchain.CalcMerkleRoot(utilTxns, false)
 }

@@ -8,9 +8,9 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/txscript"
-	"github.com/btcsuite/btcd/wire"
+	"github.com/toole-brendan/shell/chaincfg/chainhash"
+	"github.com/toole-brendan/shell/txscript"
+	"github.com/toole-brendan/shell/wire"
 )
 
 // UpdateExtraNonce updates the extra nonce in the coinbase script of the passed

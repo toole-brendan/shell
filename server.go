@@ -22,23 +22,24 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/btcsuite/btcd/addrmgr"
-	"github.com/btcsuite/btcd/blockchain"
-	"github.com/btcsuite/btcd/blockchain/indexers"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/btcutil/bloom"
-	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/connmgr"
-	"github.com/btcsuite/btcd/database"
-	"github.com/btcsuite/btcd/mempool"
-	"github.com/btcsuite/btcd/mining"
-	"github.com/btcsuite/btcd/mining/cpuminer"
-	"github.com/btcsuite/btcd/netsync"
-	"github.com/btcsuite/btcd/peer"
-	"github.com/btcsuite/btcd/txscript"
-	"github.com/btcsuite/btcd/wire"
 	"github.com/decred/dcrd/lru"
+	"github.com/toole-brendan/shell/addrmgr"
+	"github.com/toole-brendan/shell/blockchain"
+	"github.com/toole-brendan/shell/blockchain/indexers"
+	"github.com/toole-brendan/shell/chaincfg"
+	"github.com/toole-brendan/shell/chaincfg/chainhash"
+	"github.com/toole-brendan/shell/connmgr"
+	"github.com/toole-brendan/shell/database"
+	"github.com/toole-brendan/shell/internal/convert"
+	"github.com/toole-brendan/shell/mempool"
+	"github.com/toole-brendan/shell/mining"
+	"github.com/toole-brendan/shell/mining/cpuminer"
+	"github.com/toole-brendan/shell/netsync"
+	"github.com/toole-brendan/shell/peer"
+	"github.com/toole-brendan/shell/txscript"
+	"github.com/toole-brendan/shell/wire"
 )
 
 const (
@@ -569,7 +570,7 @@ func (sp *serverPeer) OnMemPool(_ *peer.Peer, msg *wire.MsgMemPool) {
 	// the passed hint to the maximum allowed, so it's safe to pass it
 	// without double checking it here.
 	txMemPool := sp.server.txMemPool
-	txDescs := txMemPool.TxDescs()
+	txDescs := txMemPool.MiningDescs()
 	invMsg := wire.NewMsgInvSizeHint(uint(len(txDescs)))
 
 	for _, txDesc := range txDescs {
@@ -577,7 +578,7 @@ func (sp *serverPeer) OnMemPool(_ *peer.Peer, msg *wire.MsgMemPool) {
 		// or only the transactions that match the filter when there is
 		// one.
 		if !sp.filter.IsLoaded() || sp.filter.MatchTxAndUpdate(txDesc.Tx) {
-			iv := wire.NewInvVect(wire.InvTypeTx, txDesc.Tx.Hash())
+			iv := wire.NewInvVect(wire.InvTypeTx, convert.HashToShell(txDesc.Tx.Hash()))
 			invMsg.AddInvVect(iv)
 			if len(invMsg.InvList)+1 > wire.MaxInvPerMsg {
 				break
@@ -605,8 +606,8 @@ func (sp *serverPeer) OnTx(_ *peer.Peer, msg *wire.MsgTx) {
 	// Add the transaction to the known inventory for the peer.
 	// Convert the raw MsgTx to a btcutil.Tx which provides some convenience
 	// methods and things such as hash caching.
-	tx := btcutil.NewTx(msg)
-	iv := wire.NewInvVect(wire.InvTypeTx, tx.Hash())
+	tx := convert.NewShellTx(msg)
+	iv := wire.NewInvVect(wire.InvTypeTx, convert.HashToShell(tx.Hash()))
 	sp.AddKnownInventory(iv)
 
 	// Queue the transaction up to be handled by the sync manager and
@@ -623,10 +624,10 @@ func (sp *serverPeer) OnTx(_ *peer.Peer, msg *wire.MsgTx) {
 func (sp *serverPeer) OnBlock(_ *peer.Peer, msg *wire.MsgBlock, buf []byte) {
 	// Convert the raw MsgBlock to a btcutil.Block which provides some
 	// convenience methods and things such as hash caching.
-	block := btcutil.NewBlockFromBlockAndBytes(msg, buf)
+	block := convert.NewShellBlock(msg)
 
 	// Add the block to the known inventory for the peer.
-	iv := wire.NewInvVect(wire.InvTypeBlock, block.Hash())
+	iv := wire.NewInvVect(wire.InvTypeBlock, convert.HashToShell(block.Hash()))
 	sp.AddKnownInventory(iv)
 
 	// Queue the block up to be handled by the block
@@ -1268,7 +1269,7 @@ func (sp *serverPeer) OnFilterLoad(_ *peer.Peer, msg *wire.MsgFilterLoad) {
 
 	sp.setDisableRelayTx(false)
 
-	sp.filter.Reload(msg)
+	sp.filter.Reload(convert.MsgFilterLoadToBtc(msg))
 }
 
 // OnGetAddr is invoked when a peer receives a getaddr bitcoin message
@@ -1501,7 +1502,7 @@ func (s *server) RemoveRebroadcastInventory(iv *wire.InvVect) {
 // passed transactions to all connected peers.
 func (s *server) relayTransactions(txns []*mempool.TxDesc) {
 	for _, txD := range txns {
-		iv := wire.NewInvVect(wire.InvTypeTx, txD.Tx.Hash())
+		iv := wire.NewInvVect(wire.InvTypeTx, convert.HashToShell(txD.Tx.Hash()))
 		s.RelayInventory(iv, txD)
 	}
 }
@@ -1530,7 +1531,7 @@ func (s *server) TransactionConfirmed(tx *btcutil.Tx) {
 		return
 	}
 
-	iv := wire.NewInvVect(wire.InvTypeTx, tx.Hash())
+	iv := wire.NewInvVect(wire.InvTypeTx, convert.HashToShell(tx.Hash()))
 	s.RemoveRebroadcastInventory(iv)
 }
 

@@ -16,8 +16,8 @@ import (
 	"runtime/pprof"
 	"runtime/trace"
 
-	"github.com/btcsuite/btcd/blockchain/indexers"
-	"github.com/btcsuite/btcd/database"
+	"github.com/toole-brendan/shell/blockchain/indexers"
+	"github.com/toole-brendan/shell/database"
 	"github.com/btcsuite/btcd/limits"
 	"github.com/btcsuite/btcd/ossec"
 )

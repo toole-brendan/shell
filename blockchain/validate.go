@@ -13,10 +13,11 @@ import (
 	"time"
 
 	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/txscript"
-	"github.com/btcsuite/btcd/wire"
+	"github.com/toole-brendan/shell/chaincfg"
+	"github.com/toole-brendan/shell/chaincfg/chainhash"
+	"github.com/toole-brendan/shell/txscript"
+	"github.com/toole-brendan/shell/wire"
+	"github.com/toole-brendan/shell/internal/convert"
 )
 
 const (
@@ -276,11 +277,11 @@ func CheckTransactionSanity(tx *btcutil.Tx) error {
 	// Check for duplicate transaction inputs.
 	existingTxOut := make(map[wire.OutPoint]struct{})
 	for _, txIn := range msgTx.TxIn {
-		if _, exists := existingTxOut[txIn.PreviousOutPoint]; exists {
+		if _, exists := existingTxOut[convert.OutPointToShell(&txIn.PreviousOutPoint)]; exists {
 			return ruleError(ErrDuplicateTxInputs, "transaction "+
 				"contains duplicate inputs")
 		}
-		existingTxOut[txIn.PreviousOutPoint] = struct{}{}
+		existingTxOut[convert.OutPointToShell(&txIn.PreviousOutPoint)] = struct{}{}
 	}
 
 	// Coinbase script length must be between min and max length.
@@ -394,7 +395,7 @@ func CountP2SHSigOps(tx *btcutil.Tx, isCoinBaseTx bool, utxoView *UtxoViewpoint)
 	totalSigOps := 0
 	for txInIndex, txIn := range msgTx.TxIn {
 		// Ensure the referenced input transaction is available.
-		utxo := utxoView.LookupEntry(txIn.PreviousOutPoint)
+		utxo := utxoView.LookupEntry(convert.OutPointToShell(&txIn.PreviousOutPoint))
 		if utxo == nil || utxo.IsSpent() {
 			str := fmt.Sprintf("output %v referenced from "+
 				"transaction %s:%d either does not exist or "+
@@ -851,7 +852,7 @@ func (b *BlockChain) checkBlockContext(block *btcutil.Block, prevNode *blockNode
 				blockTime) {
 
 				str := fmt.Sprintf("block contains unfinalized "+
-					"transaction %v", tx.Hash())
+					"transaction %v", convert.HashToShell(tx.Hash()))
 				return ruleError(ErrUnfinalizedTx, str)
 			}
 		}
@@ -926,7 +927,7 @@ func (b *BlockChain) checkBIP0030(node *blockNode, block *btcutil.Block, view *U
 	// Typically, there will not be any utxos for any of the outputs.
 	fetch := make([]wire.OutPoint, 0, len(block.Transactions()))
 	for _, tx := range block.Transactions() {
-		prevOut := wire.OutPoint{Hash: *tx.Hash()}
+		prevOut := wire.OutPoint{Hash: *convert.HashToShell(tx.Hash()),}
 		for txOutIdx := range tx.MsgTx().TxOut {
 			prevOut.Index = uint32(txOutIdx)
 			fetch = append(fetch, prevOut)
@@ -972,7 +973,7 @@ func CheckTransactionInputs(tx *btcutil.Tx, txHeight int32, utxoView *UtxoViewpo
 	var totalSatoshiIn int64
 	for txInIndex, txIn := range tx.MsgTx().TxIn {
 		// Ensure the referenced input transaction is available.
-		utxo := utxoView.LookupEntry(txIn.PreviousOutPoint)
+		utxo := utxoView.LookupEntry(convert.OutPointToShell(&txIn.PreviousOutPoint))
 		if utxo == nil || utxo.IsSpent() {
 			str := fmt.Sprintf("output %v referenced from "+
 				"transaction %s:%d either does not exist or "+

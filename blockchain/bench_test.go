@@ -7,14 +7,13 @@ package blockchain
 import (
 	"testing"
 
-	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/wire"
+	"github.com/toole-brendan/shell/wire"
 )
 
 // BenchmarkIsCoinBase performs a simple benchmark against the IsCoinBase
 // function.
 func BenchmarkIsCoinBase(b *testing.B) {
-	tx, _ := btcutil.NewBlock(&Block100000).Tx(1)
+	tx, _ := convert.NewShellBlock(&Block100000).Tx(1)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		IsCoinBase(tx)
@@ -40,7 +39,7 @@ func BenchmarkUtxoFetchMap(b *testing.B) {
 		needed := make(map[wire.OutPoint]struct{}, len(transactions))
 		for _, tx := range transactions[1:] {
 			for _, txIn := range tx.TxIn {
-				needed[txIn.PreviousOutPoint] = struct{}{}
+				needed[convert.OutPointToShell(&txIn.PreviousOutPoint)] = struct{}{}
 			}
 		}
 	}

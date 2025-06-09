@@ -20,16 +20,17 @@ import (
 	"sync"
 	"time"
 
-	"github.com/btcsuite/btcd/blockchain"
-	"github.com/btcsuite/btcd/btcjson"
+	"github.com/toole-brendan/shell/blockchain"
+	"github.com/toole-brendan/shell/btcjson"
 	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/database"
-	"github.com/btcsuite/btcd/txscript"
-	"github.com/btcsuite/btcd/wire"
+	"github.com/toole-brendan/shell/chaincfg"
+	"github.com/toole-brendan/shell/chaincfg/chainhash"
+	"github.com/toole-brendan/shell/database"
+	"github.com/toole-brendan/shell/txscript"
+	"github.com/toole-brendan/shell/wire"
 	"github.com/btcsuite/websocket"
 	"golang.org/x/crypto/ripemd160"
+	"github.com/toole-brendan/shell/internal/convert"
 )
 
 const (
@@ -674,7 +675,7 @@ func (m *wsNotificationManager) subscribedClients(tx *btcutil.Tx,
 				if filter.existsAddress(a) {
 					subscribed[quitChan] = struct{}{}
 					op := wire.OutPoint{
-						Hash:  *tx.Hash(),
+						Hash:  *convert.HashToShell(tx.Hash()),,
 						Index: uint32(i),
 					}
 					filter.addUnspentOutPoint(&op)
@@ -907,8 +908,8 @@ func (m *wsNotificationManager) addSpentRequests(opMap map[wire.OutPoint]map[cha
 		spend := m.server.cfg.TxMemPool.CheckSpend(*op)
 		if spend != nil {
 			rpcsLog.Debugf("Found existing mempool spend for "+
-				"outpoint<%v>: %v", op, spend.Hash())
-			spends[*spend.Hash()] = spend
+				"outpoint<%v>: %v", op, convert.HashToShell(spend.Hash()))
+			spends[convert.HashToShell(spend.Hash()))] = spend
 		}
 	}
 
@@ -2392,7 +2393,7 @@ func rescanBlock(wsc *wsClient, lookups *rescanKeys, blk *btcutil.Block) {
 				}
 
 				outpoint := wire.OutPoint{
-					Hash:  *tx.Hash(),
+					Hash:  *convert.HashToShell(tx.Hash()),,
 					Index: uint32(txOutIdx),
 				}
 				lookups.unspent[outpoint] = struct{}{}
@@ -2469,7 +2470,7 @@ func rescanBlockFilter(filter *wsClientFilter, block *btcutil.Block, params *cha
 				}
 
 				op := wire.OutPoint{
-					Hash:  *tx.Hash(),
+					Hash:  *convert.HashToShell(tx.Hash()),,
 					Index: uint32(i),
 				}
 				filter.addUnspentOutPoint(&op)

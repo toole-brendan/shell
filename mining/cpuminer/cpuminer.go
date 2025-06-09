@@ -12,12 +12,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/btcsuite/btcd/blockchain"
+	"github.com/toole-brendan/shell/blockchain"
 	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/mining"
-	"github.com/btcsuite/btcd/wire"
+	"github.com/toole-brendan/shell/chaincfg"
+	"github.com/toole-brendan/shell/chaincfg/chainhash"
+	"github.com/toole-brendan/shell/mining"
+	"github.com/toole-brendan/shell/wire"
+	"github.com/toole-brendan/shell/internal/convert"
 )
 
 const (
@@ -249,7 +250,7 @@ func (m *CPUMiner) solveBlock(msgBlock *wire.MsgBlock, blockHeight int32,
 				// The current block is stale if the best block
 				// has changed.
 				best := m.g.BestSnapshot()
-				if !header.PrevBlock.IsEqual(&best.Hash) {
+				if !header.PrevBlock.IsEqual(convert.HashToBtc(&best.Hash)) {
 					return false
 				}
 
@@ -355,7 +356,7 @@ out:
 		// a new block template can be generated.  When the return is
 		// true a solution was found, so submit the solved block.
 		if m.solveBlock(template.Block, curHeight+1, ticker, quit) {
-			block := btcutil.NewBlock(template.Block)
+			block := convert.NewShellBlock(template.Block)
 			m.submitBlock(block)
 		}
 	}
@@ -609,7 +610,7 @@ func (m *CPUMiner) GenerateNBlocks(n uint32) ([]*chainhash.Hash, error) {
 		// a new block template can be generated.  When the return is
 		// true a solution was found, so submit the solved block.
 		if m.solveBlock(template.Block, curHeight+1, ticker, nil) {
-			block := btcutil.NewBlock(template.Block)
+			block := convert.NewShellBlock(template.Block)
 			m.submitBlock(block)
 			blockHashes[i] = block.Hash()
 			i++

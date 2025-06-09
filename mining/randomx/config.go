@@ -6,8 +6,8 @@ package randomx
 
 import (
 	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/wire"
+	"github.com/toole-brendan/shell/chaincfg/chainhash"
+	"github.com/toole-brendan/shell/wire"
 )
 
 // RandomXParams contains the parameters for RandomX mining.

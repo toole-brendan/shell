@@ -9,14 +9,15 @@ import (
 	"testing"
 
 	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/wire"
+	"github.com/toole-brendan/shell/chaincfg/chainhash"
+	"github.com/toole-brendan/shell/wire"
 	"github.com/stretchr/testify/require"
+	"github.com/toole-brendan/shell/internal/convert"
 )
 
 // TestMerkle tests the BuildMerkleTreeStore API.
 func TestMerkle(t *testing.T) {
-	block := btcutil.NewBlock(&Block100000)
+	block := convert.NewShellBlock(&Block100000)
 	calcMerkleRoot := CalcMerkleRoot(block.Transactions(), false)
 	merkleStoreTree := BuildMerkleTreeStore(block.Transactions(), false)
 	merkleStoreRoot := merkleStoreTree[len(merkleStoreTree)-1]
@@ -41,7 +42,7 @@ func makeHashes(size int) []*chainhash.Hash {
 func makeTxs(size int) []*btcutil.Tx {
 	var txs = make([]*btcutil.Tx, size)
 	for i := range txs {
-		tx := btcutil.NewTx(wire.NewMsgTx(2))
+		tx := convert.NewShellTx(wire.NewMsgTx(2))
 		tx.Hash()
 		txs[i] = tx
 	}

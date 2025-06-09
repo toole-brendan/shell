@@ -12,13 +12,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/btcsuite/btcd/blockchain"
+	"github.com/toole-brendan/shell/blockchain"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/txscript"
-	"github.com/btcsuite/btcd/wire"
+	"github.com/toole-brendan/shell/chaincfg"
+	"github.com/toole-brendan/shell/chaincfg/chainhash"
+	"github.com/toole-brendan/shell/txscript"
+	"github.com/toole-brendan/shell/wire"
+	"github.com/toole-brendan/shell/internal/convert"
 )
 
 // fakeChain is used by the pool harness to provide generated test utxos and
@@ -46,7 +47,7 @@ func (s *fakeChain) FetchUtxoView(tx *btcutil.Tx) (*blockchain.UtxoViewpoint, er
 
 	// Add an entry for the tx itself to the new view.
 	viewpoint := blockchain.NewUtxoViewpoint()
-	prevOut := wire.OutPoint{Hash: *tx.Hash()}
+	prevOut := wire.OutPoint{Hash: *convert.HashToShell(tx.Hash()),}
 	for txOutIdx := range tx.MsgTx().TxOut {
 		prevOut.Index = uint32(txOutIdx)
 		entry := s.utxos.LookupEntry(prevOut)
@@ -55,8 +56,8 @@ func (s *fakeChain) FetchUtxoView(tx *btcutil.Tx) (*blockchain.UtxoViewpoint, er
 
 	// Add entries for all of the inputs to the tx to the new view.
 	for _, txIn := range tx.MsgTx().TxIn {
-		entry := s.utxos.LookupEntry(txIn.PreviousOutPoint)
-		viewpoint.Entries()[txIn.PreviousOutPoint] = entry.Clone()
+		entry := s.utxos.LookupEntry(convert.OutPointToShell(&txIn.PreviousOutPoint))
+		viewpoint.Entries()[convert.OutPointToShell(&txIn.PreviousOutPoint)] = entry.Clone()
 	}
 
 	return viewpoint, nil
@@ -118,7 +119,7 @@ type spendableOutput struct {
 // transactions.
 func txOutToSpendableOut(tx *btcutil.Tx, outputNum uint32) spendableOutput {
 	return spendableOutput{
-		outPoint: wire.OutPoint{Hash: *tx.Hash(), Index: outputNum},
+		outPoint: wire.OutPoint{Hash: *convert.HashToShell(tx.Hash())), Index: outputNum},
 		amount:   btcutil.Amount(tx.MsgTx().TxOut[outputNum].Value),
 	}
 }
@@ -180,7 +181,7 @@ func (p *poolHarness) CreateCoinbaseTx(blockHeight int32, numOutputs uint32) (*b
 		})
 	}
 
-	return btcutil.NewTx(tx), nil
+	return convert.NewShellTx(tx), nil
 }
 
 // CreateSignedTx creates a new signed transaction that consumes the provided
@@ -236,7 +237,7 @@ func (p *poolHarness) CreateSignedTx(inputs []spendableOutput,
 		tx.TxIn[i].SignatureScript = sigScript
 	}
 
-	return btcutil.NewTx(tx), nil
+	return convert.NewShellTx(tx), nil
 }
 
 // CreateTxChain creates a chain of zero-fee transactions (each subsequent
@@ -270,7 +271,7 @@ func (p *poolHarness) CreateTxChain(firstOutput spendableOutput, numTxns uint32)
 		}
 		tx.TxIn[0].SignatureScript = sigScript
 
-		txChain = append(txChain, btcutil.NewTx(tx))
+		txChain = append(txChain, convert.NewShellTx(tx))
 
 		// Next transaction uses outputs from this one.
 		prevOutPoint = wire.OutPoint{Hash: tx.TxHash(), Index: 0}
@@ -296,7 +297,7 @@ func newPoolHarness(chainParams *chaincfg.Params) (*poolHarness, []spendableOutp
 	// Generate associated pay-to-script-hash address and resulting payment
 	// script.
 	pubKeyBytes := signPub.SerializeCompressed()
-	payPubKeyAddr, err := btcutil.NewAddressPubKey(pubKeyBytes, chainParams)
+	payPubKeyAddr, err := btcutil.NewAddressPubKey(pubKeyBytes, convert.ParamsToBtc(chainParams))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -541,7 +542,7 @@ func TestOrphanReject(t *testing.T) {
 			false, 0)
 		if err == nil {
 			t.Fatalf("ProcessTransaction: did not fail on orphan "+
-				"%v when allow orphans flag is false", tx.Hash())
+				"%v when allow orphans flag is false", convert.HashToShell(tx.Hash()))
 		}
 		expectedErr := RuleError{}
 		if reflect.TypeOf(err) != reflect.TypeOf(expectedErr) {
@@ -617,7 +618,7 @@ func TestOrphanEviction(t *testing.T) {
 	// evicted matches the expected number.
 	var evictedTxns []*btcutil.Tx
 	for _, tx := range chainedTxns[1:] {
-		if !harness.txPool.IsOrphanInPool(tx.Hash()) {
+		if !harness.txPool.IsOrphanInPool(convert.HashToShell(tx.Hash())) {
 			evictedTxns = append(evictedTxns, tx)
 		}
 	}
@@ -1035,11 +1036,11 @@ func TestSignalsReplacement(t *testing.T) {
 			)
 			if signalsReplacement && !testCase.signalsReplacement {
 				ctx.t.Fatalf("expected transaction %v to not "+
-					"signal replacement", tx.Hash())
+					"signal replacement", convert.HashToShell(tx.Hash()))
 			}
 			if !signalsReplacement && testCase.signalsReplacement {
 				ctx.t.Fatalf("expected transaction %v to "+
-					"signal replacement", tx.Hash())
+					"signal replacement", convert.HashToShell(tx.Hash()))
 			}
 		})
 		if !success {

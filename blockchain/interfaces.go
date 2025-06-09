@@ -1,8 +1,8 @@
 package blockchain
 
 import (
-	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
+	"github.com/toole-brendan/shell/chaincfg"
+	"github.com/toole-brendan/shell/chaincfg/chainhash"
 )
 
 // ChainCtx is an interface that abstracts away blockchain parameters.

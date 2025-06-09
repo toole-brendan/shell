@@ -12,14 +12,15 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/btcsuite/btcd/blockchain"
+	"github.com/toole-brendan/shell/blockchain"
 	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/database"
-	"github.com/btcsuite/btcd/mempool"
-	peerpkg "github.com/btcsuite/btcd/peer"
-	"github.com/btcsuite/btcd/wire"
+	"github.com/toole-brendan/shell/chaincfg"
+	"github.com/toole-brendan/shell/chaincfg/chainhash"
+	"github.com/toole-brendan/shell/database"
+	"github.com/toole-brendan/shell/mempool"
+	peerpkg "github.com/toole-brendan/shell/peer"
+	"github.com/toole-brendan/shell/wire"
+	"github.com/toole-brendan/shell/internal/convert"
 )
 
 const (
@@ -1002,7 +1003,7 @@ func (sm *SyncManager) handleHeadersMsg(hmsg *headersMsg) {
 		// add it to the list of headers.
 		node := headerNode{hash: &blockHash}
 		prevNode := prevNodeEl.Value.(*headerNode)
-		if prevNode.hash.IsEqual(&blockHeader.PrevBlock) {
+		if prevNode.hash.IsEqual(convert.HashToBtc(&blockHeader.PrevBlock)) {
 			node.height = prevNode.height + 1
 			e := sm.headerList.PushBack(&node)
 			if sm.startHeader == nil {
@@ -1454,7 +1455,7 @@ func (sm *SyncManager) handleBlockchainNotification(notification *blockchain.Not
 		}
 
 		// Generate the inventory vector and relay it.
-		iv := wire.NewInvVect(wire.InvTypeBlock, block.Hash())
+		iv := wire.NewInvVect(wire.InvTypeBlock, convert.HashToShell(block.Hash()))
 		sm.peerNotifier.RelayInventory(iv, block.MsgBlock().Header)
 
 	// A block has been connected to the main block chain.
@@ -1525,7 +1526,7 @@ func (sm *SyncManager) handleBlockchainNotification(notification *blockchain.Not
 
 		// Rollback previous block recorded by the fee estimator.
 		if sm.feeEstimator != nil {
-			sm.feeEstimator.Rollback(block.Hash())
+			sm.feeEstimator.Rollback(convert.HashToShell(block.Hash()))
 		}
 	}
 }

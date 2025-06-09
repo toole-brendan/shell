@@ -13,8 +13,8 @@ import (
 	"strings"
 
 	"github.com/btcsuite/btcd/btcec/v2"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/wire"
+	"github.com/toole-brendan/shell/chaincfg/chainhash"
+	"github.com/toole-brendan/shell/wire"
 )
 
 // ScriptFlags is a bitmask defining additional operations or tests that will be

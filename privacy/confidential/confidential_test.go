@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/btcsuite/btcd/btcec/v2"
-	"github.com/btcsuite/btcd/wire"
+	"github.com/toole-brendan/shell/wire"
 )
 
 func TestPedersenCommitment(t *testing.T) {

@@ -5,13 +5,16 @@
 package blockchain
 
 import (
+	"github.com/toole-brendan/shell/internal/convert"
+)
+import (
 	"fmt"
 	"time"
 
 	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/txscript"
+	"github.com/toole-brendan/shell/chaincfg"
+	"github.com/toole-brendan/shell/chaincfg/chainhash"
+	"github.com/toole-brendan/shell/txscript"
 )
 
 // CheckpointConfirmations is the number of blocks before the end of the current
@@ -202,7 +205,7 @@ func (b *BlockChain) IsCheckpointCandidate(block *btcutil.Block) (bool, error) {
 	defer b.chainLock.RUnlock()
 
 	// A checkpoint must be in the main chain.
-	node := b.index.LookupNode(block.Hash())
+	node := b.index.LookupNode(convert.HashToShell(block.Hash()))
 	if node == nil || !b.bestChain.Contains(node) {
 		return false, nil
 	}

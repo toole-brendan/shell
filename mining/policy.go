@@ -5,9 +5,12 @@
 package mining
 
 import (
-	"github.com/btcsuite/btcd/blockchain"
+	"github.com/toole-brendan/shell/internal/convert"
+)
+import (
+	"github.com/toole-brendan/shell/blockchain"
 	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/wire"
+	"github.com/toole-brendan/shell/wire"
 )
 
 const (
@@ -67,7 +70,7 @@ func calcInputValueAge(tx *wire.MsgTx, utxoView *blockchain.UtxoViewpoint, nextB
 	for _, txIn := range tx.TxIn {
 		// Don't attempt to accumulate the total input age if the
 		// referenced transaction output doesn't exist.
-		entry := utxoView.LookupEntry(txIn.PreviousOutPoint)
+		entry := utxoView.LookupEntry(convert.OutPointToShell(&txIn.PreviousOutPoint))
 		if entry != nil && !entry.IsSpent() {
 			// Inputs with dependencies currently in the mempool
 			// have their block height set to a special constant.

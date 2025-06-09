@@ -7,14 +7,15 @@ package indexers
 import (
 	"errors"
 
-	"github.com/btcsuite/btcd/blockchain"
+	"github.com/toole-brendan/shell/blockchain"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/btcutil/gcs"
 	"github.com/btcsuite/btcd/btcutil/gcs/builder"
-	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/database"
-	"github.com/btcsuite/btcd/wire"
+	"github.com/toole-brendan/shell/chaincfg"
+	"github.com/toole-brendan/shell/chaincfg/chainhash"
+	"github.com/toole-brendan/shell/database"
+	"github.com/toole-brendan/shell/wire"
+	"github.com/toole-brendan/shell/internal/convert"
 )
 
 const (
@@ -232,21 +233,21 @@ func (idx *CfIndex) DisconnectBlock(dbTx database.Tx, block *btcutil.Block,
 	_ []blockchain.SpentTxOut) error {
 
 	for _, key := range cfIndexKeys {
-		err := dbDeleteFilterIdxEntry(dbTx, key, block.Hash())
+		err := dbDeleteFilterIdxEntry(dbTx, key, convert.HashToShell(block.Hash()))
 		if err != nil {
 			return err
 		}
 	}
 
 	for _, key := range cfHeaderKeys {
-		err := dbDeleteFilterIdxEntry(dbTx, key, block.Hash())
+		err := dbDeleteFilterIdxEntry(dbTx, key, convert.HashToShell(block.Hash()))
 		if err != nil {
 			return err
 		}
 	}
 
 	for _, key := range cfHashKeys {
-		err := dbDeleteFilterIdxEntry(dbTx, key, block.Hash())
+		err := dbDeleteFilterIdxEntry(dbTx, key, convert.HashToShell(block.Hash()))
 		if err != nil {
 			return err
 		}

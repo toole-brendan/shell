@@ -6,15 +6,18 @@
 package txscript_test
 
 import (
+	"github.com/toole-brendan/shell/internal/convert"
+)
+import (
 	"encoding/hex"
 	"fmt"
 
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/txscript"
-	"github.com/btcsuite/btcd/wire"
+	"github.com/toole-brendan/shell/chaincfg"
+	"github.com/toole-brendan/shell/chaincfg/chainhash"
+	"github.com/toole-brendan/shell/txscript"
+	"github.com/toole-brendan/shell/wire"
 )
 
 // This example demonstrates creating a script which pays to a bitcoin address.
@@ -26,7 +29,7 @@ func ExamplePayToAddrScript() {
 	// the address type.  It is also required for the upcoming call to
 	// PayToAddrScript.
 	addressStr := "12gpXQVcCL2qhTNQgyLVdCFG2Qs2px98nV"
-	address, err := btcutil.DecodeAddress(addressStr, &chaincfg.MainNetParams)
+	address, err := btcutil.DecodeAddress(addressStr, convert.ParamsToBtc(&chaincfg.MainNetParams))
 	if err != nil {
 		fmt.Println(err)
 		return

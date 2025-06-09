@@ -26,21 +26,22 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/btcsuite/btcd/blockchain"
-	"github.com/btcsuite/btcd/blockchain/indexers"
+	"github.com/toole-brendan/shell/blockchain"
+	"github.com/toole-brendan/shell/blockchain/indexers"
 	"github.com/btcsuite/btcd/btcec/v2/ecdsa"
-	"github.com/btcsuite/btcd/btcjson"
+	"github.com/toole-brendan/shell/btcjson"
 	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/database"
-	"github.com/btcsuite/btcd/mempool"
-	"github.com/btcsuite/btcd/mining"
-	"github.com/btcsuite/btcd/mining/cpuminer"
-	"github.com/btcsuite/btcd/peer"
-	"github.com/btcsuite/btcd/txscript"
-	"github.com/btcsuite/btcd/wire"
+	"github.com/toole-brendan/shell/chaincfg"
+	"github.com/toole-brendan/shell/chaincfg/chainhash"
+	"github.com/toole-brendan/shell/database"
+	"github.com/toole-brendan/shell/mempool"
+	"github.com/toole-brendan/shell/mining"
+	"github.com/toole-brendan/shell/mining/cpuminer"
+	"github.com/toole-brendan/shell/peer"
+	"github.com/toole-brendan/shell/txscript"
+	"github.com/toole-brendan/shell/wire"
 	"github.com/btcsuite/websocket"
+	"github.com/toole-brendan/shell/internal/convert"
 )
 
 // API version constants
@@ -758,8 +759,8 @@ func createTxRawResult(chainParams *chaincfg.Params, mtx *wire.MsgTx,
 		Txid:     txHash,
 		Hash:     mtx.WitnessHash().String(),
 		Size:     int32(mtx.SerializeSize()),
-		Vsize:    int32(mempool.GetTxVirtualSize(btcutil.NewTx(mtx))),
-		Weight:   int32(blockchain.GetTransactionWeight(btcutil.NewTx(mtx))),
+		Vsize:    int32(mempool.GetTxVirtualSize(convert.NewShellTx(mtx))),
+		Weight:   int32(blockchain.GetTransactionWeight(convert.NewShellTx(mtx))),
 		Vin:      createVinList(mtx),
 		Vout:     createVoutList(mtx, chainParams, nil),
 		Version:  uint32(mtx.Version),
@@ -839,7 +840,7 @@ func handleDecodeScript(s *rpcServer, cmd interface{}, closeChan <-chan struct{}
 	}
 
 	// Convert the script itself to a pay-to-script-hash address.
-	p2sh, err := btcutil.NewAddressScriptHash(script, s.cfg.ChainParams)
+	p2sh, err := btcutil.NewAddressScriptHash(script, convert.ParamsToBtc(s.cfg.ChainParams))
 	if err != nil {
 		context := "Failed to convert script to pay-to-script-hash"
 		return nil, internalRPCError(err.Error(), context)
@@ -1658,7 +1659,7 @@ func (state *gbtWorkState) updateBlockTemplate(s *rpcServer, useCoinbaseValue bo
 			template.ValidPayAddress = true
 
 			// Update the merkle root.
-			block := btcutil.NewBlock(template.Block)
+			block := convert.NewShellBlock(template.Block)
 			merkleRoot := blockchain.CalcMerkleRoot(block.Transactions(), false)
 			template.Block.Header.MerkleRoot = merkleRoot
 		}
@@ -1746,7 +1747,7 @@ func (state *gbtWorkState) blockTemplateResult(useCoinbaseValue bool, submitOld 
 			return nil, internalRPCError(err.Error(), context)
 		}
 
-		bTx := btcutil.NewTx(tx)
+		bTx := convert.NewShellTx(tx)
 		resultTx := btcjson.GetBlockTemplateResultTx{
 			Data:    hex.EncodeToString(txBuf.Bytes()),
 			TxID:    txID.String(),
@@ -2147,7 +2148,7 @@ func handleGetBlockTemplateProposal(s *rpcServer, request *btcjson.TemplateReque
 			Message: "Block decode failed: " + err.Error(),
 		}
 	}
-	block := btcutil.NewBlock(&msgBlock)
+	block := convert.NewShellBlock(&msgBlock)
 
 	// Ensure the block is building from the expected previous block.
 	expectedPrevHash := s.cfg.Chain.BestSnapshot().Hash
@@ -3448,7 +3449,7 @@ func handleSendRawTransaction(s *rpcServer, cmd interface{}, closeChan <-chan st
 	}
 
 	// Use 0 for the tag to represent local node.
-	tx := btcutil.NewTx(&msgTx)
+	tx := convert.NewShellTx(&msgTx)
 	acceptedTxs, err := s.cfg.TxMemPool.ProcessTransaction(tx, false, false, 0)
 	if err != nil {
 		// When the error is a rule error, it means the transaction was
@@ -3502,11 +3503,11 @@ func handleSendRawTransaction(s *rpcServer, cmd interface{}, closeChan <-chan st
 	//
 	// Also, since an error is being returned to the caller, ensure the
 	// transaction is removed from the memory pool.
-	if len(acceptedTxs) == 0 || !acceptedTxs[0].Tx.Hash().IsEqual(tx.Hash()) {
+	if len(acceptedTxs) == 0 || !acceptedTxs[0].Tx.Hash().IsEqual(convert.HashToShell(tx.Hash())) {
 		s.cfg.TxMemPool.RemoveTransaction(tx, true)
 
 		errStr := fmt.Sprintf("transaction %v is not in accepted list",
-			tx.Hash())
+			convert.HashToShell(tx.Hash()))
 		return nil, internalRPCError(errStr, "")
 	}
 
@@ -3522,7 +3523,7 @@ func handleSendRawTransaction(s *rpcServer, cmd interface{}, closeChan <-chan st
 	// Keep track of all the sendrawtransaction request txns so that they
 	// can be rebroadcast if they don't make their way into a block.
 	txD := acceptedTxs[0]
-	iv := wire.NewInvVect(wire.InvTypeTx, txD.Tx.Hash())
+	iv := wire.NewInvVect(wire.InvTypeTx, convert.HashToShell(tx.Hash()))
 	s.cfg.ConnMgr.AddRebroadcastInventory(iv, txD)
 
 	return tx.Hash().String(), nil
@@ -3641,7 +3642,7 @@ func handleSubmitBlock(s *rpcServer, cmd interface{}, closeChan <-chan struct{})
 		return fmt.Sprintf("rejected: %s", err.Error()), nil
 	}
 
-	rpcsLog.Infof("Accepted block %s via submitblock", block.Hash())
+	rpcsLog.Infof("Accepted block %s via submitblock", convert.HashToShell(block.Hash()))
 	return nil, nil
 }
 
@@ -3801,7 +3802,7 @@ func handleVerifyMessage(s *rpcServer, cmd interface{}, closeChan <-chan struct{
 	} else {
 		serializedPK = pk.SerializeUncompressed()
 	}
-	address, err := btcutil.NewAddressPubKey(serializedPK, params)
+	address, err := btcutil.NewAddressPubKey(serializedPK, convert.ParamsToBtc(params))
 	if err != nil {
 		// Again mirror Bitcoin Core behavior, which treats error in public key
 		// reconstruction as invalid signature.
@@ -4877,7 +4878,7 @@ func (s *rpcServer) handleBlockchainNotification(notification *blockchain.Notifi
 		// Allow any clients performing long polling via the
 		// getblocktemplate RPC to be notified when the new block causes
 		// their old block template to become stale.
-		s.gbtWorkState.NotifyBlockConnected(block.Hash())
+		s.gbtWorkState.NotifyBlockConnected(convert.HashToShell(block.Hash()))
 
 	case blockchain.NTBlockConnected:
 		block, ok := notification.Data.(*btcutil.Block)

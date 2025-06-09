@@ -8,7 +8,7 @@ import (
 	"fmt"
 
 	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/toole-brendan/shell/chaincfg"
 	"github.com/toole-brendan/shell/privacy/confidential"
 )
 

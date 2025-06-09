@@ -13,10 +13,11 @@ import (
 	"testing"
 
 	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/database"
-	"github.com/btcsuite/btcd/database/ffldb"
+	"github.com/toole-brendan/shell/chaincfg"
+	"github.com/toole-brendan/shell/chaincfg/chainhash"
+	"github.com/toole-brendan/shell/database"
+	"github.com/toole-brendan/shell/database/ffldb"
+	"github.com/toole-brendan/shell/internal/convert"
 )
 
 // dbType is the database type name for this driver.
@@ -170,7 +171,7 @@ func TestPersistence(t *testing.T) {
 		"b1key2": "foo2",
 		"b1key3": "foo3",
 	}
-	genesisBlock := btcutil.NewBlock(chaincfg.MainNetParams.GenesisBlock)
+	genesisBlock := convert.NewShellBlock(chaincfg.MainNetParams.GenesisBlock)
 	genesisHash := chaincfg.MainNetParams.GenesisHash
 	err = db.Update(func(tx database.Tx) error {
 		metadataBucket := tx.Metadata()
@@ -296,7 +297,7 @@ func TestPrune(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			blockHashMap[*block.Hash()] = bytes
+			blockHashMap[*convert.HashToShell(block.Hash())] = bytes
 		}
 
 		err = db.Update(func(tx database.Tx) error {

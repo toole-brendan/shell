@@ -8,8 +8,9 @@ import (
 	"fmt"
 
 	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcd/wire"
+	"github.com/toole-brendan/shell/chaincfg"
+	"github.com/toole-brendan/shell/internal/convert"
+	"github.com/toole-brendan/shell/wire"
 )
 
 const (
@@ -943,7 +944,7 @@ func PushedData(script []byte) ([][]byte, error) {
 func pubKeyHashToAddrs(hash []byte, params *chaincfg.Params) []btcutil.Address {
 	// Skip the pubkey hash if it's invalid for some reason.
 	var addrs []btcutil.Address
-	addr, err := btcutil.NewAddressPubKeyHash(hash, params)
+	addr, err := btcutil.NewAddressPubKeyHash(hash, convert.ParamsToBtc(params))
 	if err == nil {
 		addrs = append(addrs, addr)
 	}
@@ -956,7 +957,7 @@ func pubKeyHashToAddrs(hash []byte, params *chaincfg.Params) []btcutil.Address {
 func scriptHashToAddrs(hash []byte, params *chaincfg.Params) []btcutil.Address {
 	// Skip the hash if it's invalid for some reason.
 	var addrs []btcutil.Address
-	addr, err := btcutil.NewAddressScriptHashFromHash(hash, params)
+	addr, err := btcutil.NewAddressScriptHashFromHash(hash, convert.ParamsToBtc(params))
 	if err == nil {
 		addrs = append(addrs, addr)
 	}
@@ -983,7 +984,7 @@ func ExtractPkScriptAddrs(pkScript []byte,
 	// Check for pay-to-pubkey script.
 	if data := extractPubKey(pkScript); data != nil {
 		var addrs []btcutil.Address
-		addr, err := btcutil.NewAddressPubKey(data, chainParams)
+		addr, err := btcutil.NewAddressPubKey(data, convert.ParamsToBtc(chainParams))
 		if err == nil {
 			addrs = append(addrs, addr)
 		}
@@ -997,7 +998,7 @@ func ExtractPkScriptAddrs(pkScript []byte,
 		// Convert the public keys while skipping any that are invalid.
 		addrs := make([]btcutil.Address, 0, len(details.pubKeys))
 		for _, pubkey := range details.pubKeys {
-			addr, err := btcutil.NewAddressPubKey(pubkey, chainParams)
+			addr, err := btcutil.NewAddressPubKey(pubkey, convert.ParamsToBtc(chainParams))
 			if err == nil {
 				addrs = append(addrs, addr)
 			}
@@ -1013,7 +1014,7 @@ func ExtractPkScriptAddrs(pkScript []byte,
 
 	if hash := extractWitnessPubKeyHash(pkScript); hash != nil {
 		var addrs []btcutil.Address
-		addr, err := btcutil.NewAddressWitnessPubKeyHash(hash, chainParams)
+		addr, err := btcutil.NewAddressWitnessPubKeyHash(hash, convert.ParamsToBtc(chainParams))
 		if err == nil {
 			addrs = append(addrs, addr)
 		}
@@ -1022,7 +1023,7 @@ func ExtractPkScriptAddrs(pkScript []byte,
 
 	if hash := extractWitnessV0ScriptHash(pkScript); hash != nil {
 		var addrs []btcutil.Address
-		addr, err := btcutil.NewAddressWitnessScriptHash(hash, chainParams)
+		addr, err := btcutil.NewAddressWitnessScriptHash(hash, convert.ParamsToBtc(chainParams))
 		if err == nil {
 			addrs = append(addrs, addr)
 		}
@@ -1031,7 +1032,7 @@ func ExtractPkScriptAddrs(pkScript []byte,
 
 	if rawKey := extractWitnessV1KeyBytes(pkScript); rawKey != nil {
 		var addrs []btcutil.Address
-		addr, err := btcutil.NewAddressTaproot(rawKey, chainParams)
+		addr, err := btcutil.NewAddressTaproot(rawKey, convert.ParamsToBtc(chainParams))
 		if err == nil {
 			addrs = append(addrs, addr)
 		}

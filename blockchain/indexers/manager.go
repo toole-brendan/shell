@@ -8,11 +8,12 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/btcsuite/btcd/blockchain"
+	"github.com/toole-brendan/shell/blockchain"
 	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/database"
-	"github.com/btcsuite/btcd/wire"
+	"github.com/toole-brendan/shell/chaincfg/chainhash"
+	"github.com/toole-brendan/shell/database"
+	"github.com/toole-brendan/shell/wire"
+	"github.com/toole-brendan/shell/internal/convert"
 )
 
 var (
@@ -82,7 +83,7 @@ func dbIndexConnectBlock(dbTx database.Tx, indexer Indexer, block *btcutil.Block
 		return AssertError(fmt.Sprintf("dbIndexConnectBlock must be "+
 			"called with a block that extends the current index "+
 			"tip (%s, tip %s, block %s)", indexer.Name(),
-			curTipHash, block.Hash()))
+			curTipHash, convert.HashToShell(block.Hash())))
 	}
 
 	// Notify the indexer with the connected block so it can index it.
@@ -108,11 +109,11 @@ func dbIndexDisconnectBlock(dbTx database.Tx, indexer Indexer, block *btcutil.Bl
 	if err != nil {
 		return err
 	}
-	if !curTipHash.IsEqual(block.Hash()) {
+	if !curTipHash.IsEqual(convert.HashToShell(block.Hash())) {
 		return AssertError(fmt.Sprintf("dbIndexDisconnectBlock must "+
 			"be called with the block at the current index tip "+
 			"(%s, tip %s, block %s)", indexer.Name(),
-			curTipHash, block.Hash()))
+			curTipHash, convert.HashToShell(block.Hash())))
 	}
 
 	// Notify the indexer with the disconnected block so it can remove all

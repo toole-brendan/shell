@@ -13,16 +13,17 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/btcsuite/btcd/blockchain"
-	"github.com/btcsuite/btcd/blockchain/indexers"
-	"github.com/btcsuite/btcd/btcjson"
+	"github.com/toole-brendan/shell/blockchain"
+	"github.com/toole-brendan/shell/blockchain/indexers"
+	"github.com/toole-brendan/shell/btcjson"
 	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/mining"
-	"github.com/btcsuite/btcd/txscript"
-	"github.com/btcsuite/btcd/wire"
+	"github.com/toole-brendan/shell/chaincfg"
+	"github.com/toole-brendan/shell/chaincfg/chainhash"
+	"github.com/toole-brendan/shell/mining"
+	"github.com/toole-brendan/shell/txscript"
+	"github.com/toole-brendan/shell/wire"
 	"github.com/davecgh/go-spew/spew"
+	"github.com/toole-brendan/shell/internal/convert"
 )
 
 const (
@@ -218,7 +219,7 @@ func (mp *TxPool) removeOrphan(tx *btcutil.Tx, removeRedeemers bool) {
 
 	// Remove the reference from the previous orphan index.
 	for _, txIn := range otx.tx.MsgTx().TxIn {
-		orphans, exists := mp.orphansByPrev[txIn.PreviousOutPoint]
+		orphans, exists := mp.orphansByPrev[convert.OutPointToShell(&txIn.PreviousOutPoint)]
 		if exists {
 			delete(orphans, *txHash)
 
@@ -339,17 +340,17 @@ func (mp *TxPool) addOrphan(tx *btcutil.Tx, tag Tag) {
 	// orphan if space is still needed.
 	mp.limitNumOrphans()
 
-	mp.orphans[*tx.Hash()] = &orphanTx{
+	mp.orphans[*convert.HashToShell(tx.Hash())] = &orphanTx{
 		tx:         tx,
 		tag:        tag,
 		expiration: time.Now().Add(orphanTTL),
 	}
 	for _, txIn := range tx.MsgTx().TxIn {
-		if _, exists := mp.orphansByPrev[txIn.PreviousOutPoint]; !exists {
-			mp.orphansByPrev[txIn.PreviousOutPoint] =
+		if _, exists := mp.orphansByPrev[convert.OutPointToShell(&txIn.PreviousOutPoint)]; !exists {
+			mp.orphansByPrev[convert.OutPointToShell(&txIn.PreviousOutPoint)] =
 				make(map[chainhash.Hash]*btcutil.Tx)
 		}
-		mp.orphansByPrev[txIn.PreviousOutPoint][*tx.Hash()] = tx
+		mp.orphansByPrev[convert.OutPointToShell(&txIn.PreviousOutPoint)][convert.HashToShell(tx.Hash()))] = tx
 	}
 
 	log.Debugf("Stored orphan transaction %v (total: %d)", tx.Hash(),
@@ -394,7 +395,7 @@ func (mp *TxPool) maybeAddOrphan(tx *btcutil.Tx, tag Tag) error {
 func (mp *TxPool) removeOrphanDoubleSpends(tx *btcutil.Tx) {
 	msgTx := tx.MsgTx()
 	for _, txIn := range msgTx.TxIn {
-		for _, orphan := range mp.orphansByPrev[txIn.PreviousOutPoint] {
+		for _, orphan := range mp.orphansByPrev[convert.OutPointToShell(&txIn.PreviousOutPoint)] {
 			mp.removeOrphan(orphan, true)
 		}
 	}
@@ -528,8 +529,8 @@ func (mp *TxPool) RemoveDoubleSpends(tx *btcutil.Tx) {
 	// Protect concurrent access.
 	mp.mtx.Lock()
 	for _, txIn := range tx.MsgTx().TxIn {
-		if txRedeemer, ok := mp.outpoints[txIn.PreviousOutPoint]; ok {
-			if !txRedeemer.Hash().IsEqual(tx.Hash()) {
+		if txRedeemer, ok := mp.outpoints[convert.OutPointToShell(&txIn.PreviousOutPoint)]; ok {
+			if !txRedeemer.Hash().IsEqual(convert.HashToShell(tx.Hash())) {
 				mp.removeTransaction(txRedeemer, true)
 			}
 		}
@@ -556,9 +557,9 @@ func (mp *TxPool) addTransaction(utxoView *blockchain.UtxoViewpoint, tx *btcutil
 		StartingPriority: mining.CalcPriority(tx.MsgTx(), utxoView, height),
 	}
 
-	mp.pool[*tx.Hash()] = txD
+	mp.pool[convert.HashToShell(tx.Hash()))] = txD
 	for _, txIn := range tx.MsgTx().TxIn {
-		mp.outpoints[txIn.PreviousOutPoint] = tx
+		mp.outpoints[convert.OutPointToShell(&txIn.PreviousOutPoint)] = tx
 	}
 	atomic.StoreInt64(&mp.lastUpdated, time.Now().Unix())
 
@@ -588,7 +589,7 @@ func (mp *TxPool) addTransaction(utxoView *blockchain.UtxoViewpoint, tx *btcutil
 func (mp *TxPool) checkPoolDoubleSpend(tx *btcutil.Tx) (bool, error) {
 	var isReplacement bool
 	for _, txIn := range tx.MsgTx().TxIn {
-		conflict, ok := mp.outpoints[txIn.PreviousOutPoint]
+		conflict, ok := mp.outpoints[convert.OutPointToShell(&txIn.PreviousOutPoint)]
 		if !ok {
 			continue
 		}
@@ -599,7 +600,7 @@ func (mp *TxPool) checkPoolDoubleSpend(tx *btcutil.Tx) (bool, error) {
 			!mp.signalsReplacement(conflict, nil) {
 			str := fmt.Sprintf("output already spent in mempool: "+
 				"output=%v, tx=%v", txIn.PreviousOutPoint,
-				conflict.Hash())
+				convert.HashToShell(conflict.Hash()))
 			return false, txRuleError(wire.RejectDuplicate, str)
 		}
 
@@ -722,26 +723,26 @@ func (mp *TxPool) txDescendants(tx *btcutil.Tx,
 	// We'll go through all of the outputs of the transaction to determine
 	// if they are spent by any other mempool transactions.
 	descendants := make(map[chainhash.Hash]*btcutil.Tx)
-	op := wire.OutPoint{Hash: *tx.Hash()}
+	op := wire.OutPoint{Hash: *convert.HashToShell(tx.Hash()))}
 	for i := range tx.MsgTx().TxOut {
 		op.Index = uint32(i)
 		descendant, ok := mp.outpoints[op]
 		if !ok {
 			continue
 		}
-		descendants[*descendant.Hash()] = descendant
+		descendants[convert.HashToShell(descendant.Hash()))] = descendant
 
 		// Determine if the descendants of this descendant have already
 		// been computed. If they haven't, we'll do so now and cache
 		// them to use them later on if necessary.
-		moreDescendants, ok := cache[*descendant.Hash()]
+		moreDescendants, ok := cache[convert.HashToShell(descendant.Hash()))]
 		if !ok {
 			moreDescendants = mp.txDescendants(descendant, cache)
-			cache[*descendant.Hash()] = moreDescendants
+			cache[convert.HashToShell(descendant.Hash()))] = moreDescendants
 		}
 
 		for _, moreDescendant := range moreDescendants {
-			descendants[*moreDescendant.Hash()] = moreDescendant
+			descendants[convert.HashToShell(moreDescendant.Hash()))] = moreDescendant
 		}
 	}
 
@@ -760,11 +761,11 @@ func (mp *TxPool) txDescendants(tx *btcutil.Tx,
 func (mp *TxPool) txConflicts(tx *btcutil.Tx) map[chainhash.Hash]*btcutil.Tx {
 	conflicts := make(map[chainhash.Hash]*btcutil.Tx)
 	for _, txIn := range tx.MsgTx().TxIn {
-		conflict, ok := mp.outpoints[txIn.PreviousOutPoint]
+		conflict, ok := mp.outpoints[convert.OutPointToShell(&txIn.PreviousOutPoint)]
 		if !ok {
 			continue
 		}
-		conflicts[*conflict.Hash()] = conflict
+		conflicts[convert.HashToShell(conflict.Hash()))] = conflict
 		descendants := mp.txDescendants(conflict, nil)
 		maps.Copy(conflicts, descendants)
 	}
@@ -954,7 +955,7 @@ func (mp *TxPool) maybeAcceptTransaction(tx *btcutil.Tx, isNew, rateLimit,
 	for _, conflict := range r.Conflicts {
 		log.Debugf("Replacing transaction %v (fee_rate=%v sat/kb) "+
 			"with %v (fee_rate=%v sat/kb)\n", conflict.Hash(),
-			mp.pool[*conflict.Hash()].FeePerKB, tx.Hash(),
+			mp.pool[convert.HashToShell(conflict.Hash()))].FeePerKB, tx.Hash(),
 			int64(r.TxFee)*1000/r.TxSize)
 
 		// The conflict set should already include the descendants for
@@ -1005,7 +1006,7 @@ func (mp *TxPool) processOrphans(acceptedTx *btcutil.Tx) []*TxDesc {
 		firstElement := processList.Remove(processList.Front())
 		processItem := firstElement.(*btcutil.Tx)
 
-		prevOut := wire.OutPoint{Hash: *processItem.Hash()}
+		prevOut := wire.OutPoint{Hash: *convert.HashToShell(processItem.Hash()))}
 		for txOutIdx := range processItem.MsgTx().TxOut {
 			// Look up all orphans that redeem the output that is
 			// now available.  This will typically only be one, but
@@ -1103,7 +1104,7 @@ func (mp *TxPool) ProcessOrphans(acceptedTx *btcutil.Tx) []*TxDesc {
 //
 // This function is safe for concurrent access.
 func (mp *TxPool) ProcessTransaction(tx *btcutil.Tx, allowOrphan, rateLimit bool, tag Tag) ([]*TxDesc, error) {
-	log.Tracef("Processing transaction %v", tx.Hash())
+	log.Tracef("Processing transaction %v", convert.HashToShell(tx.Hash()))
 
 	// Protect concurrent access.
 	mp.mtx.Lock()

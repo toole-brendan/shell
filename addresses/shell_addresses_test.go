@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/btcsuite/btcd/btcec/v2"
-	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/toole-brendan/shell/chaincfg"
 )
 
 func TestShellTaprootAddress(t *testing.T) {

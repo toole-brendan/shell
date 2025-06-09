@@ -14,11 +14,12 @@ import (
 	"time"
 
 	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/database"
-	"github.com/btcsuite/btcd/database/ffldb"
-	"github.com/btcsuite/btcd/wire"
+	"github.com/toole-brendan/shell/chaincfg"
+	"github.com/toole-brendan/shell/chaincfg/chainhash"
+	"github.com/toole-brendan/shell/database"
+	"github.com/toole-brendan/shell/database/ffldb"
+	"github.com/toole-brendan/shell/wire"
+	"github.com/toole-brendan/shell/internal/convert"
 )
 
 func TestMapSlice(t *testing.T) {
@@ -404,7 +405,7 @@ func TestUtxoCacheFlush(t *testing.T) {
 	chain, params, tearDown := utxoCacheTestChain("TestUtxoCacheFlush")
 	defer tearDown()
 	cache := chain.utxoCache
-	tip := btcutil.NewBlock(params.GenesisBlock)
+	tip := convert.NewShellBlock(params.GenesisBlock)
 
 	// The chainSetup init triggers the consistency status write.
 	err := assertConsistencyState(chain, params.GenesisHash)
@@ -485,7 +486,7 @@ func TestUtxoCacheFlush(t *testing.T) {
 		t.Fatalf("Expected 0 entries, has %d instead", cache.cachedEntries.length())
 	}
 
-	err = assertConsistencyState(chain, tip.Hash())
+	err = assertConsistencyState(chain, convert.HashToShell(tip.Hash()))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -548,7 +549,7 @@ func TestUtxoCacheFlush(t *testing.T) {
 		t.Fatalf("Expected 0 entries, has %d instead", cache.cachedEntries.length())
 	}
 
-	err = assertConsistencyState(chain, tip.Hash())
+	err = assertConsistencyState(chain, convert.HashToShell(tip.Hash()))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -600,7 +601,7 @@ func TestUtxoCacheFlush(t *testing.T) {
 		t.Fatalf("Expected 0 entries, has %d instead", cache.cachedEntries.length())
 	}
 
-	err = assertConsistencyState(chain, tip.Hash())
+	err = assertConsistencyState(chain, convert.HashToShell(tip.Hash()))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -753,7 +754,7 @@ func TestFlushOnPrune(t *testing.T) {
 		// create a stale branch in the chain.
 		staleMsgBlock := blocks[1].MsgBlock().Copy()
 		staleMsgBlock.Header.Nonce = 0
-		staleBlock := btcutil.NewBlock(staleMsgBlock)
+		staleBlock := convert.NewShellBlock(staleMsgBlock)
 
 		// Add the stale block here to create a chain view like so. The
 		// block will be the main chain at first but become stale as we
@@ -796,7 +797,7 @@ func TestFlushOnPrune(t *testing.T) {
 
 		if !block.Hash().IsEqual(blockHash) {
 			return fmt.Errorf("expected to find block %v but got %v",
-				blockHash, block.Hash())
+				blockHash, convert.HashToShell(block.Hash()))
 		}
 
 		return nil
@@ -828,12 +829,12 @@ func TestFlushOnPrune(t *testing.T) {
 			}
 
 			if exist {
-				err = shouldExist(dbTx, block.Hash())
+				err = shouldExist(dbTx, convert.HashToShell(block.Hash()))
 				if err != nil {
 					return err
 				}
 			} else {
-				err = shouldNotExist(dbTx, block.Hash())
+				err = shouldNotExist(dbTx, convert.HashToShell(block.Hash()))
 				if err != nil {
 					return err
 				}
@@ -879,7 +880,7 @@ func TestInitConsistentState(t *testing.T) {
 		}
 
 		if !isMainChain {
-			t.Fatalf("expected block %s to be on the main chain", block.Hash())
+			t.Fatalf("expected block %s to be on the main chain", convert.HashToShell(block.Hash()))
 		}
 
 		if i == cacheFlushHeight {
@@ -951,7 +952,7 @@ func TestInitConsistentState(t *testing.T) {
 		}
 
 		if !isMainChain {
-			t.Fatalf("expected block %s to be on the main chain", block.Hash())
+			t.Fatalf("expected block %s to be on the main chain", convert.HashToShell(block.Hash()))
 		}
 	}
 

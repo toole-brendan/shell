@@ -11,10 +11,11 @@ import (
 
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/txscript"
-	"github.com/btcsuite/btcd/wire"
+	"github.com/toole-brendan/shell/chaincfg"
+	"github.com/toole-brendan/shell/chaincfg/chainhash"
+	"github.com/toole-brendan/shell/txscript"
+	"github.com/toole-brendan/shell/wire"
+	"github.com/toole-brendan/shell/internal/convert"
 )
 
 // TestCalcMinRequiredTxRelayFee tests the calcMinRequiredTxRelayFee API.
@@ -467,7 +468,7 @@ func TestCheckTransactionStandard(t *testing.T) {
 	pastMedianTime := time.Now()
 	for _, test := range tests {
 		// Ensure standardness is as expected.
-		err := CheckTransactionStandard(btcutil.NewTx(&test.tx),
+		err := CheckTransactionStandard(convert.NewShellTx(&test.tx),
 			test.height, pastMedianTime, DefaultMinRelayTxFee, 1)
 		if err == nil && test.isStandard {
 			// Test passes since function returned standard for a

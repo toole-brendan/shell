@@ -18,11 +18,12 @@ import (
 	"testing"
 
 	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcd/database"
-	"github.com/btcsuite/btcd/wire"
+	"github.com/toole-brendan/shell/chaincfg"
+	"github.com/toole-brendan/shell/database"
+	"github.com/toole-brendan/shell/wire"
 	"github.com/syndtr/goleveldb/leveldb"
 	ldberrors "github.com/syndtr/goleveldb/leveldb/errors"
+	"github.com/toole-brendan/shell/internal/convert"
 )
 
 var (
@@ -56,7 +57,7 @@ func loadBlocks(t *testing.T, dataFile string, network wire.BitcoinNet) ([]*btcu
 
 	// Set the first block as the genesis block.
 	blocks := make([]*btcutil.Block, 0, 256)
-	genesis := btcutil.NewBlock(chaincfg.MainNetParams.GenesisBlock)
+	genesis := convert.NewShellBlock(chaincfg.MainNetParams.GenesisBlock)
 	blocks = append(blocks, genesis)
 
 	// Load the remaining blocks.
