@@ -1,3 +1,6 @@
+//go:build !cgo
+// +build !cgo
+
 // Copyright (c) 2025 Shell Reserve developers
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
@@ -63,3 +66,11 @@ func (vm *VM) CalcHash(input []byte) []byte {
 func (vm *VM) Close() {
 	// Cleanup would happen here
 }
+
+// GetFlags returns default flags for stub implementation
+func GetFlags() Flags {
+	return 0 // Default flags
+}
+
+// Flags type for compatibility
+type Flags int
