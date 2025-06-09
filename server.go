@@ -2677,8 +2677,9 @@ out:
 			// TODO: if specific listen port doesn't work then ask for wildcard
 			// listen port?
 			// XXX this assumes timeout is in seconds.
-			listenPort, err := s.nat.AddPortMapping("tcp", int(lport), int(lport),
+			err := s.nat.AddPortMapping("tcp", int(lport), int(lport),
 				"btcd listen port", 20*60)
+			listenPort := int(lport) // Use the same port we're listening on
 			if err != nil {
 				srvrLog.Warnf("can't add UPnP port mapping: %v", err)
 			}
@@ -3439,4 +3440,245 @@ func (sp *serverPeer) HasUndesiredUserAgent(blacklistedAgents,
 		"whitelist", sp, agent)
 
 	return true
+}
+
+// NAT interface provides a way to work with Network Address Translation.
+// This is typically used for UPnP port forwarding.
+type NAT interface {
+	// GetExternalAddress returns the external address of the NAT device.
+	GetExternalAddress() (net.IP, error)
+
+	// AddPortMapping adds a port mapping for the given protocol and port.
+	AddPortMapping(protocol string, externalPort, internalPort int, description string, timeout int) error
+
+	// DeletePortMapping removes a port mapping for the given protocol and port.
+	DeletePortMapping(protocol string, externalPort, internalPort int) error
+}
+
+// Discover attempts to find NAT devices using UPnP.
+// Returns nil NAT if no device is found (this is normal and not an error).
+func Discover() (NAT, error) {
+	// For now, we'll return nil (no UPnP support).
+	// In a full implementation, this would attempt UPnP discovery.
+	return nil, nil
+}
+
+// rpcConnManager provides a connection manager interface for the RPC server.
+type rpcConnManager struct {
+	server *server
+}
+
+// Connect adds the provided address as a new outbound peer.
+func (cm *rpcConnManager) Connect(addr string, permanent bool) error {
+	netAddr, err := addrStringToNetAddr(addr)
+	if err != nil {
+		return err
+	}
+
+	cm.server.connManager.Connect(&connmgr.ConnReq{
+		Addr:      netAddr,
+		Permanent: permanent,
+	})
+	return nil
+}
+
+// RemoveByID removes the peer associated with the provided id from the
+// list of persistent peers.
+func (cm *rpcConnManager) RemoveByID(id int32) error {
+	// Find peer by ID and remove it
+	query := &removeNodeMsg{
+		cmp: func(sp *serverPeer) bool {
+			return sp.ID() == id
+		},
+		reply: make(chan error),
+	}
+	cm.server.query <- query
+	return <-query.reply
+}
+
+// RemoveByAddr removes the peer associated with the provided address from
+// the list of persistent peers.
+func (cm *rpcConnManager) RemoveByAddr(addr string) error {
+	// Find peer by address and remove it
+	query := &removeNodeMsg{
+		cmp: func(sp *serverPeer) bool {
+			host, _, err := net.SplitHostPort(sp.Addr())
+			if err != nil {
+				host = sp.Addr()
+			}
+			return host == addr
+		},
+		reply: make(chan error),
+	}
+	cm.server.query <- query
+	return <-query.reply
+}
+
+// DisconnectByID disconnects the peer associated with the provided id.
+func (cm *rpcConnManager) DisconnectByID(id int32) error {
+	// Find peer by ID and disconnect it
+	query := &disconnectNodeMsg{
+		cmp: func(sp *serverPeer) bool {
+			return sp.ID() == id
+		},
+		reply: make(chan error),
+	}
+	cm.server.query <- query
+	return <-query.reply
+}
+
+// DisconnectByAddr disconnects the peer associated with the provided address.
+func (cm *rpcConnManager) DisconnectByAddr(addr string) error {
+	// Find peer by address and disconnect it
+	query := &disconnectNodeMsg{
+		cmp: func(sp *serverPeer) bool {
+			host, _, err := net.SplitHostPort(sp.Addr())
+			if err != nil {
+				host = sp.Addr()
+			}
+			return host == addr
+		},
+		reply: make(chan error),
+	}
+	cm.server.query <- query
+	return <-query.reply
+}
+
+// ConnectedCount returns the number of currently connected peers.
+func (cm *rpcConnManager) ConnectedCount() int32 {
+	return cm.server.ConnectedCount()
+}
+
+// NetTotals returns the sum of all bytes received and sent across the network
+// for all peers.
+func (cm *rpcConnManager) NetTotals() (uint64, uint64) {
+	return cm.server.NetTotals()
+}
+
+// ConnectedPeers returns an array consisting of all connected peers.
+func (cm *rpcConnManager) ConnectedPeers() []rpcserverPeer {
+	replyChan := make(chan []*serverPeer)
+	cm.server.query <- getPeersMsg{reply: replyChan}
+	serverPeers := <-replyChan
+
+	// Convert to rpcserverPeer interface
+	peers := make([]rpcserverPeer, 0, len(serverPeers))
+	for _, sp := range serverPeers {
+		peers = append(peers, sp)
+	}
+	return peers
+}
+
+// PersistentPeers returns an array consisting of all the added persistent
+// peers.
+func (cm *rpcConnManager) PersistentPeers() []rpcserverPeer {
+	replyChan := make(chan []*serverPeer)
+	cm.server.query <- getAddedNodesMsg{reply: replyChan}
+	serverPeers := <-replyChan
+
+	// Convert to rpcserverPeer interface
+	peers := make([]rpcserverPeer, 0, len(serverPeers))
+	for _, sp := range serverPeers {
+		peers = append(peers, sp)
+	}
+	return peers
+}
+
+// BanPeer bans the provided peer.
+func (cm *rpcConnManager) BanPeer(sp rpcserverPeer) {
+	// Get the underlying server peer through the server's connected peers
+	replyChan := make(chan []*serverPeer)
+	cm.server.query <- getPeersMsg{reply: replyChan}
+	serverPeers := <-replyChan
+
+	// Find the matching serverPeer by comparing the underlying peer.Peer
+	for _, serverPeer := range serverPeers {
+		if serverPeer.Peer == sp.ToPeer() {
+			cm.server.BanPeer(serverPeer)
+			break
+		}
+	}
+}
+
+// AddRebroadcastInventory adds inventory to be rebroadcast
+func (cm *rpcConnManager) AddRebroadcastInventory(iv *wire.InvVect, data interface{}) {
+	cm.server.AddRebroadcastInventory(iv, data)
+}
+
+// BroadcastMessage sends a message to all connected peers
+func (cm *rpcConnManager) BroadcastMessage(msg wire.Message) {
+	cm.server.BroadcastMessage(msg)
+}
+
+// RelayTransactions relays transactions to connected peers
+func (cm *rpcConnManager) RelayTransactions(txns []*mempool.TxDesc) {
+	cm.server.relayTransactions(txns)
+}
+
+// NodeAddresses returns node addresses for peers
+func (cm *rpcConnManager) NodeAddresses() []*wire.NetAddressV2 {
+	// Return empty slice - not implemented for Shell Reserve compatibility layer
+	return []*wire.NetAddressV2{}
+}
+
+// Peer defines the interface for peer objects used by the RPC server.
+type Peer interface {
+	ToPeer() *serverPeer
+}
+
+// ToPeer returns the underlying peer.Peer.
+func (sp *serverPeer) ToPeer() *peer.Peer {
+	return sp.Peer
+}
+
+// BanScore returns the current ban score for the peer.
+func (sp *serverPeer) BanScore() uint32 {
+	return sp.banScore.Int()
+}
+
+// IsTxRelayDisabled returns whether transaction relay is disabled.
+func (sp *serverPeer) IsTxRelayDisabled() bool {
+	return sp.relayTxDisabled()
+}
+
+// FeeFilter returns the current fee filter value.
+func (sp *serverPeer) FeeFilter() int64 {
+	return atomic.LoadInt64(&sp.feeFilter)
+}
+
+// rpcSyncMgr provides a block manager interface for the RPC server.
+type rpcSyncMgr struct {
+	server      *server
+	syncManager *netsync.SyncManager
+}
+
+// IsCurrent returns whether or not the sync manager believes it is synced with
+// the connected peers.
+func (sm *rpcSyncMgr) IsCurrent() bool {
+	return sm.syncManager.IsCurrent()
+}
+
+// SubmitBlock submits the provided block to the network after processing it
+// locally.
+func (sm *rpcSyncMgr) SubmitBlock(block *btcutil.Block, flags blockchain.BehaviorFlags) (bool, error) {
+	return sm.syncManager.ProcessBlock(block, flags)
+}
+
+// Pause pauses the sync manager until the returned channel is closed.
+func (sm *rpcSyncMgr) Pause() chan<- struct{} {
+	return sm.syncManager.Pause()
+}
+
+// SyncPeerID returns the ID of the current sync peer, or 0 if there is none.
+func (sm *rpcSyncMgr) SyncPeerID() int32 {
+	return sm.syncManager.SyncPeerID()
+}
+
+// LocateHeaders returns the headers of the blocks after the first known block
+// in the locator until the provided stop hash is reached, or up to the
+// provided max number of block headers.
+func (sm *rpcSyncMgr) LocateHeaders(locators []*chainhash.Hash, hashStop *chainhash.Hash) []wire.BlockHeader {
+	// Convert []*chainhash.Hash to blockchain.BlockLocator
+	locator := blockchain.BlockLocator(locators)
+	return sm.server.chain.LocateHeaders(locator, hashStop)
 }

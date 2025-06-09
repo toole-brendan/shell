@@ -37,6 +37,15 @@ var (
 // as a service and reacts accordingly.
 var winServiceMain func() (bool, error)
 
+// doUpgrades performs any necessary database upgrades and migrations.
+// For Shell Reserve, this is currently a no-op but maintained for compatibility.
+func doUpgrades() error {
+	// Shell Reserve starts fresh, so no upgrades are needed.
+	// In a production implementation, this might check for and perform
+	// any necessary database schema migrations.
+	return nil
+}
+
 // btcdMain is the real main function for btcd.  It is necessary to work around
 // the fact that deferred functions do not run when os.Exit() is called.  The
 // optional serverChan parameter is mainly used by the service code to be

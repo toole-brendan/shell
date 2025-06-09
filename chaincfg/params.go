@@ -39,6 +39,14 @@ var (
 	// simNetPowLimit is the highest proof of work value a Shell block
 	// can have for the simulation test network.  It is the value 2^255 - 1.
 	simNetPowLimit = new(big.Int).Sub(new(big.Int).Lsh(bigOne, 255), bigOne)
+
+	// testNet4PowLimit is the highest proof of work value a Shell block
+	// can have for the test network (version 4).  It is the value 2^224 - 1.
+	testNet4PowLimit = new(big.Int).Sub(new(big.Int).Lsh(bigOne, 224), bigOne)
+
+	// sigNetPowLimit is the highest proof of work value a Shell block
+	// can have for the signet test network.
+	sigNetPowLimit = new(big.Int).Sub(new(big.Int).Lsh(bigOne, 250), bigOne)
 )
 
 // Checkpoint identifies a known good point in the block chain.  Using
@@ -146,11 +154,39 @@ const (
 	// institutional vault covenants.
 	DeploymentVaultCovenants
 
+	// DeploymentTestDummyMinActivation defines the minimum activation height
+	// for test deployments.
+	DeploymentTestDummyMinActivation
+
+	// DeploymentTestDummyAlwaysActive defines a test deployment that is always active.
+	// Used for testing deployment mechanisms.
+	DeploymentTestDummyAlwaysActive
+
 	// NOTE: DefinedDeployments must always come last since it is used to
 	// determine how many defined deployments there currently are.
 
 	// DefinedDeployments is the number of currently defined deployments.
 	DefinedDeployments
+)
+
+// Signet constants
+var (
+	// DefaultSignetChallenge is the default challenge script for the global
+	// default signet network.
+	DefaultSignetChallenge = []byte{
+		0x51, 0x21, 0x03, 0x1b, 0x40, 0x86, 0xf5, 0x3b,
+		0x5b, 0x18, 0x30, 0xd5, 0x6d, 0xf6, 0xfb, 0x47,
+		0x4e, 0x08, 0xd9, 0xb4, 0x1b, 0x2f, 0x37, 0x4d,
+		0x40, 0x62, 0x0f, 0x7a, 0xae, 0xd6, 0x25, 0x8e,
+		0x1f, 0x36, 0xc4, 0x47, 0x25, 0x52, 0xae,
+	}
+
+	// DefaultSignetDNSSeeds are the default DNS seeds for the global default
+	// signet network.
+	DefaultSignetDNSSeeds = []DNSSeed{
+		{"seed.signet.bitcoin.sprovoost.nl", false},
+		{"seed.signet.achow101.com", false},
+	}
 )
 
 // Params defines a Shell network by its parameters.  These parameters may be
@@ -609,6 +645,457 @@ func newHashFromStr(hexStr string) *chainhash.Hash {
 // (version 3).  Not applicable for Shell Reserve but included for compatibility.
 var TestNet3Params = MainNetParams
 
+// TestNet4Params defines the network parameters for the test Bitcoin network
+// (version 4).  Not applicable for Shell Reserve but included for compatibility.
+var TestNet4Params = Params{
+	Name:        "testnet4",
+	Net:         wire.TestNet4,
+	DefaultPort: "48333",
+	DNSSeeds: []DNSSeed{
+		{"seed.testnet4.bitcoin.sprovoost.nl", false},
+		{"seed.testnet4.wiz.biz", false},
+	},
+
+	// Chain parameters
+	GenesisBlock:     &testNet4GenesisBlock,
+	GenesisHash:      &testNet4GenesisHash,
+	PowLimit:         testNet4PowLimit,
+	PowLimitBits:     0x1d00ffff,
+	PoWNoRetargeting: false,
+	EnforceBIP94:     true, // TestNet4 uses BIP94
+	BIP0034Height:    0,
+	BIP0065Height:    0,
+	BIP0066Height:    0,
+	CoinbaseMaturity: 100,
+
+	// Shell-specific parameters (adapted for testnet)
+	MaxSupply:                100000000 * 1e8,
+	SubsidyReductionInterval: 131400, // Half of mainnet for faster testing
+	TargetTimespan:           time.Hour * 24,
+	TargetTimePerBlock:       time.Minute * 5,
+	RetargetAdjustmentFactor: 4,
+	ReduceMinDifficulty:      true, // Allow reduced difficulty for testnet
+	MinDiffReductionTime:     time.Minute * 10,
+	GenerateSupported:        true,
+
+	// RandomX parameters
+	RandomXSeedRotation: 1024,                   // Faster rotation for testnet
+	RandomXMemory:       1 * 1024 * 1024 * 1024, // 1GB for testnet
+
+	// Layer activation heights
+	L1ActivationHeight:  0,
+	L05ActivationHeight: 131400, // Earlier activation for testing
+
+	// Checkpoints
+	Checkpoints: []Checkpoint{},
+
+	// Consensus deployments (75% threshold for testnet)
+	RuleChangeActivationThreshold: 216, // 75% of MinerConfirmationWindow
+	MinerConfirmationWindow:       288,
+	Deployments: [DefinedDeployments]ConsensusDeployment{
+		DeploymentTestDummy: {
+			BitNumber: 28,
+			DeploymentStarter: NewMedianTimeDeploymentStarter(
+				time.Time{},
+			),
+			DeploymentEnder: NewMedianTimeDeploymentEnder(
+				time.Time{},
+			),
+		},
+		DeploymentCSV: {
+			BitNumber:          0,
+			AlwaysActiveHeight: 0,
+			DeploymentStarter: NewMedianTimeDeploymentStarter(
+				time.Time{},
+			),
+			DeploymentEnder: NewMedianTimeDeploymentEnder(
+				time.Time{},
+			),
+		},
+		DeploymentSegwit: {
+			BitNumber:          1,
+			AlwaysActiveHeight: 0,
+			DeploymentStarter: NewMedianTimeDeploymentStarter(
+				time.Time{},
+			),
+			DeploymentEnder: NewMedianTimeDeploymentEnder(
+				time.Time{},
+			),
+		},
+		DeploymentTaproot: {
+			BitNumber:          2,
+			AlwaysActiveHeight: 0,
+			DeploymentStarter: NewMedianTimeDeploymentStarter(
+				time.Time{},
+			),
+			DeploymentEnder: NewMedianTimeDeploymentEnder(
+				time.Time{},
+			),
+		},
+		DeploymentConfidentialTx: {
+			BitNumber:          3,
+			AlwaysActiveHeight: 0,
+			DeploymentStarter: NewMedianTimeDeploymentStarter(
+				time.Time{},
+			),
+			DeploymentEnder: NewMedianTimeDeploymentEnder(
+				time.Time{},
+			),
+		},
+		DeploymentPaymentChannels: {
+			BitNumber:          4,
+			AlwaysActiveHeight: 0,
+			DeploymentStarter: NewMedianTimeDeploymentStarter(
+				time.Time{},
+			),
+			DeploymentEnder: NewMedianTimeDeploymentEnder(
+				time.Time{},
+			),
+		},
+		DeploymentPrivacyLayer: {
+			BitNumber:           5,
+			MinActivationHeight: 131400,
+			DeploymentStarter: NewMedianTimeDeploymentStarter(
+				time.Date(2027, 1, 1, 0, 0, 0, 0, time.UTC),
+			),
+			DeploymentEnder: NewMedianTimeDeploymentEnder(
+				time.Date(2029, 1, 1, 0, 0, 0, 0, time.UTC),
+			),
+		},
+		DeploymentVaultCovenants: {
+			BitNumber:          6,
+			AlwaysActiveHeight: 0,
+			DeploymentStarter: NewMedianTimeDeploymentStarter(
+				time.Time{},
+			),
+			DeploymentEnder: NewMedianTimeDeploymentEnder(
+				time.Time{},
+			),
+		},
+	},
+
+	// Mempool parameters
+	RelayNonStdTxs: true, // Allow non-standard transactions on testnet
+
+	// Human-readable part for Bech32 encoded segwit addresses
+	Bech32HRPSegwit: "txsl", // TestNet Shell prefix
+
+	// Address encoding magics for testnet
+	PubKeyHashAddrID:        0x6f, // starts with 'm' or 'n'
+	ScriptHashAddrID:        0xc4, // starts with '2'
+	PrivateKeyID:            0xef, // WIF private keys
+	WitnessPubKeyHashAddrID: 0x03, // Taproot addresses
+	WitnessScriptHashAddrID: 0x28, // Taproot script addresses
+
+	// BIP32 hierarchical deterministic extended key magics
+	HDPrivateKeyID: [4]byte{0x04, 0x35, 0x83, 0x94}, // starts with tprv
+	HDPublicKeyID:  [4]byte{0x04, 0x35, 0x87, 0xcf}, // starts with tpub
+
+	// BIP44 coin type for testnet
+	HDCoinType: 1,
+}
+
+// SimNetParams defines the network parameters for the simulation test network.
+var SimNetParams = Params{
+	Name:        "simnet",
+	Net:         wire.SimNet,
+	DefaultPort: "18555",
+	DNSSeeds:    []DNSSeed{}, // No DNS seeds for simnet
+
+	// Chain parameters
+	GenesisBlock:     &simNetGenesisBlock,
+	GenesisHash:      &simNetGenesisHash,
+	PowLimit:         simNetPowLimit,
+	PowLimitBits:     0x207fffff,
+	PoWNoRetargeting: true, // No retargeting for simnet
+	EnforceBIP94:     false,
+	BIP0034Height:    0,
+	BIP0065Height:    0,
+	BIP0066Height:    0,
+	CoinbaseMaturity: 100,
+
+	// Shell-specific parameters (simnet for testing)
+	MaxSupply:                100000000 * 1e8,
+	SubsidyReductionInterval: 210, // Very fast halving for testing
+	TargetTimespan:           time.Minute * 10,
+	TargetTimePerBlock:       time.Minute * 1, // 1 minute blocks for fast testing
+	RetargetAdjustmentFactor: 4,
+	ReduceMinDifficulty:      true,
+	MinDiffReductionTime:     time.Minute * 2,
+	GenerateSupported:        true,
+
+	// RandomX parameters (simnet)
+	RandomXSeedRotation: 100,               // Very frequent rotation for testing
+	RandomXMemory:       256 * 1024 * 1024, // 256MB for simnet
+
+	// Layer activation heights
+	L1ActivationHeight:  0,
+	L05ActivationHeight: 1000, // Very early activation for testing
+
+	// Checkpoints
+	Checkpoints: []Checkpoint{},
+
+	// Consensus deployments (50% threshold for simnet)
+	RuleChangeActivationThreshold: 75,  // 75% of MinerConfirmationWindow
+	MinerConfirmationWindow:       150, // Faster window for simnet
+	Deployments: [DefinedDeployments]ConsensusDeployment{
+		DeploymentTestDummy: {
+			BitNumber: 28,
+			DeploymentStarter: NewMedianTimeDeploymentStarter(
+				time.Time{},
+			),
+			DeploymentEnder: NewMedianTimeDeploymentEnder(
+				time.Time{},
+			),
+		},
+		DeploymentCSV: {
+			BitNumber:          0,
+			AlwaysActiveHeight: 0,
+			DeploymentStarter: NewMedianTimeDeploymentStarter(
+				time.Time{},
+			),
+			DeploymentEnder: NewMedianTimeDeploymentEnder(
+				time.Time{},
+			),
+		},
+		DeploymentSegwit: {
+			BitNumber:          1,
+			AlwaysActiveHeight: 0,
+			DeploymentStarter: NewMedianTimeDeploymentStarter(
+				time.Time{},
+			),
+			DeploymentEnder: NewMedianTimeDeploymentEnder(
+				time.Time{},
+			),
+		},
+		DeploymentTaproot: {
+			BitNumber:          2,
+			AlwaysActiveHeight: 0,
+			DeploymentStarter: NewMedianTimeDeploymentStarter(
+				time.Time{},
+			),
+			DeploymentEnder: NewMedianTimeDeploymentEnder(
+				time.Time{},
+			),
+		},
+		DeploymentConfidentialTx: {
+			BitNumber:          3,
+			AlwaysActiveHeight: 0,
+			DeploymentStarter: NewMedianTimeDeploymentStarter(
+				time.Time{},
+			),
+			DeploymentEnder: NewMedianTimeDeploymentEnder(
+				time.Time{},
+			),
+		},
+		DeploymentPaymentChannels: {
+			BitNumber:          4,
+			AlwaysActiveHeight: 0,
+			DeploymentStarter: NewMedianTimeDeploymentStarter(
+				time.Time{},
+			),
+			DeploymentEnder: NewMedianTimeDeploymentEnder(
+				time.Time{},
+			),
+		},
+		DeploymentPrivacyLayer: {
+			BitNumber:           5,
+			MinActivationHeight: 1000,
+			DeploymentStarter: NewMedianTimeDeploymentStarter(
+				time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+			),
+			DeploymentEnder: NewMedianTimeDeploymentEnder(
+				time.Date(2028, 1, 1, 0, 0, 0, 0, time.UTC),
+			),
+		},
+		DeploymentVaultCovenants: {
+			BitNumber:          6,
+			AlwaysActiveHeight: 0,
+			DeploymentStarter: NewMedianTimeDeploymentStarter(
+				time.Time{},
+			),
+			DeploymentEnder: NewMedianTimeDeploymentEnder(
+				time.Time{},
+			),
+		},
+	},
+
+	// Mempool parameters
+	RelayNonStdTxs: true, // Allow all transactions on simnet
+
+	// Human-readable part for Bech32 encoded segwit addresses
+	Bech32HRPSegwit: "sxsl", // SimNet Shell prefix
+
+	// Address encoding magics for simnet
+	PubKeyHashAddrID:        0x3f, // starts with 'S'
+	ScriptHashAddrID:        0x7b, // starts with 's'
+	PrivateKeyID:            0x64, // WIF private keys
+	WitnessPubKeyHashAddrID: 0x19, // Taproot addresses
+	WitnessScriptHashAddrID: 0x28, // Taproot script addresses
+
+	// BIP32 hierarchical deterministic extended key magics
+	HDPrivateKeyID: [4]byte{0x04, 0x20, 0xb9, 0x00}, // starts with sprv
+	HDPublicKeyID:  [4]byte{0x04, 0x20, 0xbd, 0x3a}, // starts with spub
+
+	// BIP44 coin type for simnet
+	HDCoinType: 115,
+}
+
+// SigNetParams defines the network parameters for the signet test network.
+var SigNetParams = Params{
+	Name:        "signet",
+	Net:         wire.SigNet,
+	DefaultPort: "38333",
+	DNSSeeds:    DefaultSignetDNSSeeds,
+
+	// Chain parameters
+	GenesisBlock:     &sigNetGenesisBlock,
+	GenesisHash:      &sigNetGenesisHash,
+	PowLimit:         sigNetPowLimit,
+	PowLimitBits:     0x1e0377ae,
+	PoWNoRetargeting: false,
+	EnforceBIP94:     false,
+	BIP0034Height:    1,
+	BIP0065Height:    1,
+	BIP0066Height:    1,
+	CoinbaseMaturity: 100,
+
+	// Shell-specific parameters (signet)
+	MaxSupply:                100000000 * 1e8,
+	SubsidyReductionInterval: 210000, // Bitcoin-like halving for signet
+	TargetTimespan:           time.Hour * 24 * 14,
+	TargetTimePerBlock:       time.Minute * 10, // Bitcoin-like timing
+	RetargetAdjustmentFactor: 4,
+	ReduceMinDifficulty:      false,
+	MinDiffReductionTime:     0,
+	GenerateSupported:        false, // Signet uses signed blocks
+
+	// RandomX parameters (not used for signet)
+	RandomXSeedRotation: 2048,
+	RandomXMemory:       2 * 1024 * 1024 * 1024,
+
+	// Layer activation heights
+	L1ActivationHeight:  0,
+	L05ActivationHeight: 210000,
+
+	// Checkpoints
+	Checkpoints: []Checkpoint{},
+
+	// Consensus deployments (90% threshold like mainnet)
+	RuleChangeActivationThreshold: 1815, // 90% of MinerConfirmationWindow
+	MinerConfirmationWindow:       2016, // Bitcoin-like window
+	Deployments: [DefinedDeployments]ConsensusDeployment{
+		DeploymentTestDummy: {
+			BitNumber: 28,
+			DeploymentStarter: NewMedianTimeDeploymentStarter(
+				time.Time{},
+			),
+			DeploymentEnder: NewMedianTimeDeploymentEnder(
+				time.Time{},
+			),
+		},
+		DeploymentCSV: {
+			BitNumber:          0,
+			AlwaysActiveHeight: 1,
+			DeploymentStarter: NewMedianTimeDeploymentStarter(
+				time.Time{},
+			),
+			DeploymentEnder: NewMedianTimeDeploymentEnder(
+				time.Time{},
+			),
+		},
+		DeploymentSegwit: {
+			BitNumber:          1,
+			AlwaysActiveHeight: 1,
+			DeploymentStarter: NewMedianTimeDeploymentStarter(
+				time.Time{},
+			),
+			DeploymentEnder: NewMedianTimeDeploymentEnder(
+				time.Time{},
+			),
+		},
+		DeploymentTaproot: {
+			BitNumber:          2,
+			AlwaysActiveHeight: 1,
+			DeploymentStarter: NewMedianTimeDeploymentStarter(
+				time.Time{},
+			),
+			DeploymentEnder: NewMedianTimeDeploymentEnder(
+				time.Time{},
+			),
+		},
+		DeploymentConfidentialTx: {
+			BitNumber:          3,
+			AlwaysActiveHeight: 1,
+			DeploymentStarter: NewMedianTimeDeploymentStarter(
+				time.Time{},
+			),
+			DeploymentEnder: NewMedianTimeDeploymentEnder(
+				time.Time{},
+			),
+		},
+		DeploymentPaymentChannels: {
+			BitNumber:          4,
+			AlwaysActiveHeight: 1,
+			DeploymentStarter: NewMedianTimeDeploymentStarter(
+				time.Time{},
+			),
+			DeploymentEnder: NewMedianTimeDeploymentEnder(
+				time.Time{},
+			),
+		},
+		DeploymentPrivacyLayer: {
+			BitNumber:           5,
+			MinActivationHeight: 210000,
+			DeploymentStarter: NewMedianTimeDeploymentStarter(
+				time.Date(2027, 1, 1, 0, 0, 0, 0, time.UTC),
+			),
+			DeploymentEnder: NewMedianTimeDeploymentEnder(
+				time.Date(2029, 1, 1, 0, 0, 0, 0, time.UTC),
+			),
+		},
+		DeploymentVaultCovenants: {
+			BitNumber:          6,
+			AlwaysActiveHeight: 1,
+			DeploymentStarter: NewMedianTimeDeploymentStarter(
+				time.Time{},
+			),
+			DeploymentEnder: NewMedianTimeDeploymentEnder(
+				time.Time{},
+			),
+		},
+	},
+
+	// Mempool parameters
+	RelayNonStdTxs: false,
+
+	// Human-readable part for Bech32 encoded segwit addresses
+	Bech32HRPSegwit: "txsl", // Signet Shell prefix
+
+	// Address encoding magics for signet (same as testnet)
+	PubKeyHashAddrID:        0x6f,
+	ScriptHashAddrID:        0xc4,
+	PrivateKeyID:            0xef,
+	WitnessPubKeyHashAddrID: 0x52,
+	WitnessScriptHashAddrID: 0x57,
+
+	// BIP32 hierarchical deterministic extended key magics
+	HDPrivateKeyID: [4]byte{0x04, 0x35, 0x83, 0x94}, // starts with tprv
+	HDPublicKeyID:  [4]byte{0x04, 0x35, 0x87, 0xcf}, // starts with tpub
+
+	// BIP44 coin type for signet
+	HDCoinType: 1,
+}
+
+// CustomSignetParams creates a custom signet network with the specified challenge and seeds.
+func CustomSignetParams(challenge []byte, dnsSeeds []DNSSeed) Params {
+	params := SigNetParams
+	params.DNSSeeds = dnsSeeds
+	// Challenge would be used in block validation, but we're not implementing
+	// full signet validation in this Shell implementation
+	return params
+}
+
 // RegressionNetParams defines the network parameters for the regression test
 // Bitcoin network.  Not applicable for Shell Reserve but included for compatibility.
 var RegressionNetParams = MainNetParams
@@ -616,4 +1103,9 @@ var RegressionNetParams = MainNetParams
 func init() {
 	// Register all default networks when the package is initialized.
 	mustRegister(&MainNetParams)
+	mustRegister(&TestNet3Params)
+	mustRegister(&TestNet4Params)
+	mustRegister(&RegressionNetParams)
+	mustRegister(&SimNetParams)
+	mustRegister(&SigNetParams)
 }
