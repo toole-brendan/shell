@@ -115,6 +115,16 @@ const (
 	// purposes.
 	DeploymentTestDummy = iota
 
+	// DeploymentCSV defines the rule change deployment ID for the CSV
+	// soft-fork package. The CSV package includes the deployment of BIPS
+	// 68, 112, and 113.
+	DeploymentCSV
+
+	// DeploymentSegwit defines the rule change deployment ID for the
+	// Segregated Witness (segwit) soft-fork package. The segwit package
+	// includes the deployment of BIPS 141, 142, 144, 145, 147 and 173.
+	DeploymentSegwit
+
 	// DeploymentTaproot defines the rule change deployment ID for the
 	// Taproot (+Schnorr) soft-fork package. Active from genesis in Shell.
 	DeploymentTaproot
@@ -178,6 +188,10 @@ type Params struct {
 	// retargeting enabled or not. This should only be set to true for
 	// regtest like networks.
 	PoWNoRetargeting bool
+
+	// EnforceBIP94 specifies whether BIP94 (testnet difficulty retargeting
+	// rules) should be enforced.
+	EnforceBIP94 bool
 
 	// Shell-specific parameters
 	MaxSupply int64 // 100,000,000 XSL maximum supply
@@ -296,10 +310,12 @@ var MainNetParams = Params{
 	GenesisHash:      &shellGenesisHash,
 	PowLimit:         mainPowLimit,
 	PowLimitBits:     0x1d00ffff, // Initial difficulty
-	BIP0034Height:    0,          // Shell starts with v2+ blocks
-	BIP0065Height:    0,          // Active from genesis
-	BIP0066Height:    0,          // Active from genesis
-	CoinbaseMaturity: 100,        // Same as Bitcoin
+	PoWNoRetargeting: false,
+	EnforceBIP94:     false, // Not a testnet
+	BIP0034Height:    0,     // Shell starts with v2+ blocks
+	BIP0065Height:    0,     // Active from genesis
+	BIP0066Height:    0,     // Active from genesis
+	CoinbaseMaturity: 100,   // Same as Bitcoin
 
 	// Shell-specific economic parameters
 	MaxSupply:                100000000 * 1e8, // 100M XSL maximum
@@ -333,6 +349,26 @@ var MainNetParams = Params{
 			BitNumber: 28,
 			DeploymentStarter: NewMedianTimeDeploymentStarter(
 				time.Time{}, // Available for testing
+			),
+			DeploymentEnder: NewMedianTimeDeploymentEnder(
+				time.Time{}, // Never expires
+			),
+		},
+		DeploymentCSV: {
+			BitNumber:          0,
+			AlwaysActiveHeight: 0, // Active from genesis in Shell
+			DeploymentStarter: NewMedianTimeDeploymentStarter(
+				time.Time{}, // Always active
+			),
+			DeploymentEnder: NewMedianTimeDeploymentEnder(
+				time.Time{}, // Never expires
+			),
+		},
+		DeploymentSegwit: {
+			BitNumber:          1,
+			AlwaysActiveHeight: 0, // Active from genesis in Shell
+			DeploymentStarter: NewMedianTimeDeploymentStarter(
+				time.Time{}, // Always active
 			),
 			DeploymentEnder: NewMedianTimeDeploymentEnder(
 				time.Time{}, // Never expires
@@ -568,6 +604,14 @@ func newHashFromStr(hexStr string) *chainhash.Hash {
 	}
 	return hash
 }
+
+// TestNet3Params defines the network parameters for the test Bitcoin network
+// (version 3).  Not applicable for Shell Reserve but included for compatibility.
+var TestNet3Params = MainNetParams
+
+// RegressionNetParams defines the network parameters for the regression test
+// Bitcoin network.  Not applicable for Shell Reserve but included for compatibility.
+var RegressionNetParams = MainNetParams
 
 func init() {
 	// Register all default networks when the package is initialized.

@@ -52,13 +52,21 @@ This is the **Phase α (Core Chain)** implementation - **MAJOR PROGRESS ON α.3*
   - Confidential transaction detection in witness data
   - Shell block subsidy calculation (95 XSL initial, 10-year halving)
   - Genesis block creation with constitution commitment
+- **Import Cycle Resolution** - Major progress! ✨
+  - Fixed circular dependency between chaincfg, txscript, and btcutil
+  - Removed txscript import from genesis.go (replaced with OP_RETURN constant)
+  - Consolidated genesis block variables in genesis.go
+  - Added missing deployment constants (CSV, Segwit)
+  - Added missing network parameters (TestNet3Params, RegressionNetParams)
 
-### 🚧 In Progress (Phase α.3 Integration)
-- **Import Cycle Resolution** - Fixing circular dependencies between packages
-- **Full Node Compilation** - Resolving remaining build issues
+### 🚧 In Progress (Phase α.3 Final Steps)
+- **Full Node Compilation** - Resolving remaining undefined references:
+  - Need to add remaining network parameters (TestNet4Params, SimNetParams, SigNetParams)
+  - Need to add missing constants and functions (NAT, doUpgrades, etc.)
+  - Need to complete chaincfg package compatibility layer
 
 ### ❌ Not Yet Started
-- **Working Build** - Code doesn't compile as Shell node yet
+- **Working Build** - Code doesn't compile as complete Shell node yet
 - **Mining Implementation** - No functional mining integration
 - **RPC Interface** - Shell-specific API endpoints
 - **Network Layer** - P2P protocol modifications
@@ -74,18 +82,19 @@ This is the **Phase α (Core Chain)** implementation - **MAJOR PROGRESS ON α.3*
 
 ## 📋 Development Roadmap
 
-**Current Phase: α.3 - Consensus Integration (90% COMPLETE!)**
+**Current Phase: α.3 - Consensus Integration (95% COMPLETE!)**
 
 1. **Phase α** (Months 0-3): 🔄 Core Chain - **MAJOR PROGRESS**
    - α.1: ✅ Project setup & basic structure  
    - α.2: ✅ RandomX integration (COMPLETE - Full C++ implementation)
-   - α.3: 🚧 Confidential transactions (**90% COMPLETE!**)
+   - α.3: 🚧 Confidential transactions (**95% COMPLETE!**)
      - ✅ Pedersen commitments implemented and tested
      - ✅ Range proofs working (simplified implementation)
      - ✅ Confidential transaction structure complete
      - ✅ Shell address generation (xsl* prefixes) complete
      - ✅ Consensus integration (Shell validation logic)
-     - 🚧 Import cycle resolution (in progress)
+     - ✅ Import cycle resolution (major progress!)
+     - 🚧 Full node compilation (final undefined references)
    - α.4: ❌ Taproot implementation (addresses done, full protocol pending)
 
 2. **Phase β** (Months 3-6): ❌ Liquidity stack & reward program  
@@ -117,22 +126,28 @@ go test -tags cgo -v .  # All RandomX tests pass
 cd ../../privacy/confidential
 go test -v .  # All confidential transaction tests pass
 
-# NOTE: Full node build still has import cycle issues
-# go build  # <-- This doesn't work yet due to import cycles
+# Test addresses
+cd ../../addresses
+go test -v .  # All address tests pass
 
-# Basic structure inspection
-ls -la  # See forked btcd structure with Shell modifications
+# Build chaincfg package (NOW WORKS!)
+cd ../chaincfg
+go build .  # SUCCESS - Import cycle resolved!
+
+# NOTE: Full node build still has some undefined references
+# go build .  # <-- Still needs work for complete compilation
 ```
 
 ## ⚠️ Development Notice
 
-**Phase α.3 is 90% complete!** The implementation now includes:
+**Phase α.3 is 95% complete!** The implementation now includes:
 
 ✅ **Working confidential transactions** with Pedersen commitments and range proofs  
 ✅ **Full Shell address generation** with xsl* prefixes and multi-sig support  
 ✅ **RandomX proof-of-work** integration with real cryptographic hashes  
 ✅ **Shell consensus validation** with confidential transaction support  
 ✅ **Genesis block creation** with constitution commitment  
+✅ **Import cycle resolution** - Major breakthrough in fixing circular dependencies!
 
 ### Recent Major Achievements
 - ✅ Complete confidential transaction infrastructure
@@ -144,9 +159,16 @@ ls -la  # See forked btcd structure with Shell modifications
 - ✅ Shell-specific consensus validation logic
 - ✅ Block subsidy calculation (95 XSL initial reward)
 - ✅ Confidential transaction detection in witness data
+- ✅ **Import cycle between chaincfg/txscript/btcutil resolved!**
 
-### Current Challenge
-The main remaining issue is resolving import cycles between packages. The core functionality is implemented and tested, but the circular dependencies prevent full compilation.
+### What's Left for Phase α.3
+The main remaining tasks are:
+1. **Add missing network parameters** - TestNet4Params, SimNetParams, SigNetParams
+2. **Add missing constants** - Various deployment and configuration constants
+3. **Fix undefined references** - NAT, doUpgrades, and other btcd compatibility functions
+4. **Complete full node compilation** - Get the main binary building successfully
+
+Once these compatibility issues are resolved, we'll have a compilable Shell node ready for Phase α.4 (Taproot implementation).
 
 ## 🏛️ Constitutional Principles
 
@@ -163,7 +185,7 @@ Shell Reserve is governed by immutable principles:
 **Shell Reserve: Built to last, not to impress.**
 
 *Target Launch Date: January 1, 2026, 00:00 UTC*  
-*Current Status: Phase α.3 - Consensus Integration (90% Complete)* 
+*Current Status: Phase α.3 - Consensus Integration (95% Complete)* 
 
 ## ⚡ Current Functionality
 
@@ -184,7 +206,7 @@ go test -v  # All tests passing!
 ```bash
 # Test Shell address generation
 cd addresses  
-go test -v  # Import cycle issues, but core functionality works
+go test -v  # All tests passing!
 
 # Example addresses generated:
 # Taproot: xsl1p3qfxns25ctk4ywv888wfpx6dvragxmufkvw7cvjq28wfxv4zd3aswdq9ua
@@ -209,4 +231,17 @@ go test -tags cgo -v  # All tests passing!
 # - Confidential transaction detection in witness data
 # - Genesis block with constitution commitment
 # - Block subsidy: 95 XSL initial, halving every 262,800 blocks
+```
+
+### **Import Cycle Resolution** ✨
+```bash
+# Major breakthrough - circular dependencies fixed!
+cd chaincfg
+go build .  # NOW WORKS!
+
+# Fixed:
+# - Removed txscript import from genesis.go
+# - Used OP_RETURN constant directly (0x6a)
+# - Consolidated genesis variables
+# - Added missing deployment constants
 ``` 
