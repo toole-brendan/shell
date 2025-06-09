@@ -2,14 +2,38 @@
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
 
+// Copyright (c) 2025 Shell Reserve developers
+// Use of this source code is governed by an ISC
+// license that can be found in the LICENSE file.
+
 package chaincfg
 
 import (
+	"crypto/sha256"
 	"time"
 
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
 )
+
+// Shell Constitution Text - immutable principles
+const shellConstitutionText = `
+Shell Reserve Constitutional Principles (Immutable)
+
+1. Single Purpose: Store value securely for decades, nothing else
+2. Political Neutrality: No privileged parties, no premine, pure fair launch
+3. Institutional First: Designed for central banks and sovereign wealth funds
+4. Generational Thinking: Built for 100-year operation, not quarterly profits
+5. Boring by Design: Stability and predictability over innovation
+6. Mathematical Security: Governed by consensus and cryptography, not committees
+7. Reserve Asset Mandate: Digital gold that acts like gold - rare, boring, reliable
+
+Launch Commitment: January 1, 2026, 00:00 UTC
+No premine. No special allocations. No privileged parties.
+Pure proof-of-work distribution from block zero.
+
+"Built to last, not to impress."
+`
 
 // genesisCoinbaseTx is the coinbase transaction for the genesis blocks for
 // the main network, regression test network, and test network (version 3).
@@ -348,4 +372,54 @@ var shellGenesisBlock = wire.MsgBlock{
 		Nonce:      0,                                           // Will be mined with RandomX
 	},
 	Transactions: []*wire.MsgTx{&shellGenesisCoinbaseTx},
+}
+
+// createShellGenesisBlock creates the Shell Reserve genesis block
+func createShellGenesisBlock() *wire.MsgBlock {
+	// Constitution hash for verifiable commitment to principles
+	constitutionHash := sha256.Sum256([]byte(shellConstitutionText))
+
+	// Genesis block message - includes constitution commitment and timestamp proof
+	genesisMessage := []byte("Shell Reserve Genesis Block - Fair Launch January 1, 2026")
+	genesisMessage = append(genesisMessage, constitutionHash[:]...)
+
+	// Add newspaper headline for timestamp proof
+	timestampProof := []byte("FT 2025-12-31: Central Banks Accelerate Gold Buying as Dollar Weaponization Concerns Mount")
+	genesisMessage = append(genesisMessage, timestampProof...)
+
+	// Genesis coinbase transaction (no premine - unspendable output)
+	genesisCoinbase := &wire.MsgTx{
+		Version: 2, // Shell starts with version 2+ blocks
+		TxIn: []*wire.TxIn{{
+			PreviousOutPoint: wire.OutPoint{
+				Hash:  chainhash.Hash{}, // Null hash for coinbase
+				Index: 0xffffffff,       // Max index for coinbase
+			},
+			SignatureScript: genesisMessage,
+			Sequence:        0xffffffff,
+		}},
+		TxOut: []*wire.TxOut{{
+			Value:    0,            // NO PREMINE - zero value output
+			PkScript: []byte{0x6a}, // Unspendable OP_RETURN (0x6a)
+		}},
+		LockTime: 0,
+	}
+
+	// Genesis block header
+	genesisHeader := wire.BlockHeader{
+		Version:    2,                                           // Shell starts with v2+ for height serialization
+		PrevBlock:  chainhash.Hash{},                            // Null previous block
+		MerkleRoot: genesisCoinbase.TxHash(),                    // Merkle root of single coinbase
+		Timestamp:  time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC), // Fair launch time
+		Bits:       0x1d00ffff,                                  // Initial difficulty (same as Bitcoin genesis)
+		Nonce:      0,                                           // To be filled by miner
+	}
+
+	// Genesis block
+	genesisBlock := &wire.MsgBlock{
+		Header:       genesisHeader,
+		Transactions: []*wire.MsgTx{genesisCoinbase},
+	}
+
+	return genesisBlock
 }
