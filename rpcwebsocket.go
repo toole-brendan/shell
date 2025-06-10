@@ -20,17 +20,17 @@ import (
 	"sync"
 	"time"
 
+	"github.com/btcsuite/btcd/btcutil"
+	"github.com/btcsuite/websocket"
 	"github.com/toole-brendan/shell/blockchain"
 	"github.com/toole-brendan/shell/btcjson"
-	"github.com/btcsuite/btcd/btcutil"
 	"github.com/toole-brendan/shell/chaincfg"
 	"github.com/toole-brendan/shell/chaincfg/chainhash"
 	"github.com/toole-brendan/shell/database"
+	"github.com/toole-brendan/shell/internal/convert"
 	"github.com/toole-brendan/shell/txscript"
 	"github.com/toole-brendan/shell/wire"
-	"github.com/btcsuite/websocket"
 	"golang.org/x/crypto/ripemd160"
-	"github.com/toole-brendan/shell/internal/convert"
 )
 
 const (
@@ -332,7 +332,7 @@ func (f *wsClientFilter) addAddressStr(s string, params *chaincfg.Params) {
 	// If address can't be decoded, no point in saving it since it should also
 	// impossible to create the address from an inspected transaction output
 	// script.
-	a, err := btcutil.DecodeAddress(s, params)
+	a, err := btcutil.DecodeAddress(s, convert.ParamsToBtc(params.Name))
 	if err != nil {
 		return
 	}
@@ -413,7 +413,7 @@ func (f *wsClientFilter) removeAddress(a btcutil.Address) {
 //
 // NOTE: This extension was ported from github.com/decred/dcrd
 func (f *wsClientFilter) removeAddressStr(s string, params *chaincfg.Params) {
-	a, err := btcutil.DecodeAddress(s, params)
+	a, err := btcutil.DecodeAddress(s, convert.ParamsToBtc(params.Name))
 	if err == nil {
 		f.removeAddress(a)
 	} else {
@@ -648,7 +648,7 @@ func (m *wsNotificationManager) subscribedClients(tx *btcutil.Tx,
 				continue
 			}
 			filter.mu.Lock()
-			if filter.existsUnspentOutPoint(&input.PreviousOutPoint) {
+			if filter.existsUnspentOutPoint(convert.OutPointToShellPointer(&input.PreviousOutPoint)) {
 				subscribed[quitChan] = struct{}{}
 			}
 			filter.mu.Unlock()
@@ -675,7 +675,7 @@ func (m *wsNotificationManager) subscribedClients(tx *btcutil.Tx,
 				if filter.existsAddress(a) {
 					subscribed[quitChan] = struct{}{}
 					op := wire.OutPoint{
-						Hash:  *convert.HashToShell(tx.Hash()),,
+						Hash:  *convert.HashToShell(tx.Hash()),
 						Index: uint32(i),
 					}
 					filter.addUnspentOutPoint(&op)
@@ -755,7 +755,7 @@ func (m *wsNotificationManager) notifyFilteredBlockConnected(clients map[chan st
 		var txHex string
 		for quitChan := range m.subscribedClients(tx, clients) {
 			if txHex == "" {
-				txHex = txHexString(tx.MsgTx())
+				txHex = txHexString(convert.ToShellMsgTx(tx.MsgTx()))
 			}
 			subscribedTxs[quitChan] = append(subscribedTxs[quitChan], txHex)
 		}
@@ -848,7 +848,7 @@ func (m *wsNotificationManager) notifyForNewTx(clients map[chan struct{}]*wsClie
 			}
 
 			net := m.server.cfg.ChainParams
-			rawTx, err := createTxRawResult(net, mtx, txHashStr, nil,
+			rawTx, err := createTxRawResult(net, convert.ToShellMsgTx(mtx), txHashStr, nil,
 				"", 0, 0)
 			if err != nil {
 				return
@@ -909,7 +909,7 @@ func (m *wsNotificationManager) addSpentRequests(opMap map[wire.OutPoint]map[cha
 		if spend != nil {
 			rpcsLog.Debugf("Found existing mempool spend for "+
 				"outpoint<%v>: %v", op, convert.HashToShell(spend.Hash()))
-			spends[convert.HashToShell(spend.Hash()))] = spend
+			spends[*convert.HashToShell(spend.Hash())] = spend
 		}
 	}
 
@@ -1012,7 +1012,7 @@ func (m *wsNotificationManager) notifyForTxOuts(ops map[wire.OutPoint]map[chan s
 			}
 
 			if txHex == "" {
-				txHex = txHexString(tx.MsgTx())
+				txHex = txHexString(convert.ToShellMsgTx(tx.MsgTx()))
 			}
 			ntfn := btcjson.NewRecvTxNtfn(txHex, blockDetails(block,
 				tx.Index()))
@@ -1023,7 +1023,7 @@ func (m *wsNotificationManager) notifyForTxOuts(ops map[wire.OutPoint]map[chan s
 				continue
 			}
 
-			op := []*wire.OutPoint{wire.NewOutPoint(tx.Hash(), uint32(i))}
+			op := []*wire.OutPoint{wire.NewOutPoint(convert.HashToShell(tx.Hash()), uint32(i))}
 			for wscQuit, wsc := range cmap {
 				m.addSpentRequests(ops, wsc, op)
 
@@ -1047,7 +1047,7 @@ func (m *wsNotificationManager) notifyRelevantTxAccepted(tx *btcutil.Tx,
 	clientsToNotify := m.subscribedClients(tx, clients)
 
 	if len(clientsToNotify) != 0 {
-		n := btcjson.NewRelevantTxAcceptedNtfn(txHexString(tx.MsgTx()))
+		n := btcjson.NewRelevantTxAcceptedNtfn(txHexString(convert.ToShellMsgTx(tx.MsgTx())))
 		marshalled, err := btcjson.MarshalCmd(btcjson.RpcVersion1, nil, n)
 		if err != nil {
 			rpcsLog.Errorf("Failed to marshal notification: %v", err)
@@ -1089,9 +1089,9 @@ func (m *wsNotificationManager) notifyForTxIns(ops map[wire.OutPoint]map[chan st
 	wscNotified := make(map[chan struct{}]struct{})
 	for _, txIn := range tx.MsgTx().TxIn {
 		prevOut := &txIn.PreviousOutPoint
-		if cmap, ok := ops[*prevOut]; ok {
+		if cmap, ok := ops[convert.OutPointToShell(*prevOut)]; ok {
 			if txHex == "" {
-				txHex = txHexString(tx.MsgTx())
+				txHex = txHexString(convert.ToShellMsgTx(tx.MsgTx()))
 			}
 			marshalledJSON, err := newRedeemingTxNotification(txHex, tx.Index(), block)
 			if err != nil {
@@ -1100,7 +1100,7 @@ func (m *wsNotificationManager) notifyForTxIns(ops map[wire.OutPoint]map[chan st
 			}
 			for wscQuit, wsc := range cmap {
 				if block != nil {
-					m.removeSpentRequest(ops, wsc, prevOut)
+					m.removeSpentRequest(ops, wsc, convert.OutPointToShellPointer(prevOut))
 				}
 
 				if _, ok := wscNotified[wscQuit]; !ok {
@@ -2232,7 +2232,7 @@ func handleStopNotifyReceived(wsc *wsClient, icmd interface{}) (interface{}, err
 // properly, the function returns an error. Otherwise, nil is returned.
 func checkAddressValidity(addrs []string, params *chaincfg.Params) error {
 	for _, addr := range addrs {
-		_, err := btcutil.DecodeAddress(addr, params)
+		_, err := btcutil.DecodeAddress(addr, convert.ParamsToBtc(params.Name))
 		if err != nil {
 			return &btcjson.RPCError{
 				Code: btcjson.ErrRPCInvalidAddressOrKey,
@@ -2302,7 +2302,7 @@ func rescanBlock(wsc *wsClient, lookups *rescanKeys, blk *btcutil.Block) {
 		// a transactions spends an outpoint/script in our filter list.
 		notifySpend := func() error {
 			if txHex == "" {
-				txHex = txHexString(tx.MsgTx())
+				txHex = txHexString(convert.ToShellMsgTx(tx.MsgTx()))
 			}
 			marshalledJSON, err := newRedeemingTxNotification(
 				txHex, tx.Index(), blk,
@@ -2320,8 +2320,8 @@ func rescanBlock(wsc *wsClient, lookups *rescanKeys, blk *btcutil.Block) {
 		for _, txin := range tx.MsgTx().TxIn {
 			// If it spends an outpoint, we'll dispatch a spend
 			// notification for the transaction.
-			if _, ok := lookups.unspent[txin.PreviousOutPoint]; ok {
-				delete(lookups.unspent, txin.PreviousOutPoint)
+			if _, ok := lookups.unspent[convert.OutPointToShell(txin.PreviousOutPoint)]; ok {
+				delete(lookups.unspent, convert.OutPointToShell(txin.PreviousOutPoint))
 
 				if spentNotified {
 					continue
@@ -2348,7 +2348,7 @@ func rescanBlock(wsc *wsClient, lookups *rescanKeys, blk *btcutil.Block) {
 			// attempting to spend to determine whether it is
 			// relevant to us.
 			pkScript, err := txscript.ComputePkScript(
-				txin.SignatureScript, txin.Witness,
+				txin.SignatureScript, convert.TxWitnessToShell(txin.Witness),
 			)
 			if err != nil {
 				continue
@@ -2393,7 +2393,7 @@ func rescanBlock(wsc *wsClient, lookups *rescanKeys, blk *btcutil.Block) {
 				}
 
 				outpoint := wire.OutPoint{
-					Hash:  *convert.HashToShell(tx.Hash()),,
+					Hash:  *convert.HashToShell(tx.Hash()),
 					Index: uint32(txOutIdx),
 				}
 				lookups.unspent[outpoint] = struct{}{}
@@ -2403,7 +2403,7 @@ func rescanBlock(wsc *wsClient, lookups *rescanKeys, blk *btcutil.Block) {
 				}
 
 				if txHex == "" {
-					txHex = txHexString(tx.MsgTx())
+					txHex = txHexString(convert.ToShellMsgTx(tx.MsgTx()))
 				}
 				ntfn := btcjson.NewRecvTxNtfn(txHex,
 					blockDetails(blk, tx.Index()))
@@ -2443,15 +2443,15 @@ func rescanBlockFilter(filter *wsClientFilter, block *btcutil.Block, params *cha
 		added := false
 
 		// Scan inputs if not a coinbase transaction.
-		if !blockchain.IsCoinBaseTx(msgTx) {
+		if !blockchain.IsCoinBaseTx(convert.ToShellMsgTx(msgTx)) {
 			for _, input := range msgTx.TxIn {
-				if !filter.existsUnspentOutPoint(&input.PreviousOutPoint) {
+				if !filter.existsUnspentOutPoint(convert.OutPointToShellPointer(&input.PreviousOutPoint)) {
 					continue
 				}
 				if !added {
 					transactions = append(
 						transactions,
-						txHexString(msgTx))
+						txHexString(convert.ToShellMsgTx(msgTx)))
 					added = true
 				}
 			}
@@ -2470,7 +2470,7 @@ func rescanBlockFilter(filter *wsClientFilter, block *btcutil.Block, params *cha
 				}
 
 				op := wire.OutPoint{
-					Hash:  *convert.HashToShell(tx.Hash()),,
+					Hash:  *convert.HashToShell(tx.Hash()),
 					Index: uint32(i),
 				}
 				filter.addUnspentOutPoint(&op)
@@ -2478,7 +2478,7 @@ func rescanBlockFilter(filter *wsClientFilter, block *btcutil.Block, params *cha
 				if !added {
 					transactions = append(
 						transactions,
-						txHexString(msgTx))
+						txHexString(convert.ToShellMsgTx(msgTx)))
 					added = true
 				}
 			}
@@ -2535,7 +2535,7 @@ func handleRescanBlocks(wsc *wsClient, icmd interface{}) (interface{}, error) {
 				Message: "Failed to fetch block: " + err.Error(),
 			}
 		}
-		if lastBlockHash != nil && block.MsgBlock().Header.PrevBlock != *lastBlockHash {
+		if lastBlockHash != nil && !convert.HashToShell(&block.MsgBlock().Header.PrevBlock).IsEqual(lastBlockHash) {
 			return nil, &btcjson.RPCError{
 				Code: btcjson.ErrRPCInvalidParameter,
 				Message: fmt.Sprintf("Block %v is not a child of %v",
@@ -2596,7 +2596,7 @@ func recoverFromReorg(chain *blockchain.BlockChain, minBlock, maxBlock int32,
 // fetched during a reorganize is not a direct child of the parent block hash.
 func descendantBlock(prevHash *chainhash.Hash, curBlock *btcutil.Block) error {
 	curHash := &curBlock.MsgBlock().Header.PrevBlock
-	if !prevHash.IsEqual(curHash) {
+	if !prevHash.IsEqual(convert.HashToShell(curHash)) {
 		rpcsLog.Errorf("Stopping rescan for reorged block %v "+
 			"(replaced by block %v)", prevHash, curHash)
 		return &ErrRescanReorg
@@ -2759,7 +2759,7 @@ fetchRange:
 			default:
 				rescanBlock(wsc, lookups, blk)
 				lastBlock = blk
-				lastBlockHash = blk.Hash()
+				lastBlockHash = convert.HashToShell(blk.Hash())
 			}
 
 			// Periodically notify the client of the progress
