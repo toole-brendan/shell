@@ -59,33 +59,28 @@ This is the **Phase α (Core Chain)** implementation - **PHASE α COMPLETE!**
   - Added missing deployment constants (CSV, Segwit)
   - Added missing network parameters (TestNet3Params, RegressionNetParams)
 
-### ✅ Recently Completed (Phase α FULLY COMPLETE!)
+### ✅ Recently Completed (Major Progress on Phase α.4!)
 - **Phase α.3** - ✅ COMPLETE: Core consensus integration and Shell node compilation
-- **Phase α.4** - ✅ COMPLETE: All Shell-specific features with full validation logic
-- **Shell-Specific Opcodes** - ✅ COMPLETE: All 6 opcodes with full validation
-- **Vault Covenants** - ✅ COMPLETE: Time-delayed spending policies for institutional custody
-- **MuSig2 Framework** - ✅ COMPLETE: Aggregated signature infrastructure
-- **Taproot Integration** - ✅ COMPLETE: BIP 340/341/342 with Shell rules
-- **Settlement Layer** - ✅ COMPLETE: Payment channels and claimable balances
+- **Phase α.4 Validation** - ✅ COMPLETE: All opcodes now validate parameters
+- **Shell-Specific Opcodes** - ✅ All 6 opcodes parse and validate inputs
+- **Data Structures** - ✅ Channel, vault, and claimable balance types defined
+- **Basic Integration** - ✅ Files compile and validation logic runs
+- 🚧 **Consensus Integration** - Started but needs completion
+- 🚧 **State Management** - Framework exists, needs blockchain integration
 
-### ✅ Phase α.4 - Shell-Specific Features (COMPLETE - 100% Done!)
-- ✅ **Shell-Specific Opcodes** - Full validation logic implemented
-  - ✅ OP_VAULTTEMPLATEVERIFY - Vault covenant verification with template hash checking
-  - ✅ OP_CHANNEL_OPEN - Payment channel creation with participant validation
-  - ✅ OP_CHANNEL_UPDATE - Channel state updates with nonce and balance verification
-  - ✅ OP_CHANNEL_CLOSE - Channel closure and settlement
-  - ✅ OP_CLAIMABLE_CREATE - Conditional payment creation with predicates
-  - ✅ OP_CLAIMABLE_CLAIM - Balance claiming with proof validation
-- ✅ **Vault Covenants** - Complete implementation with time-delayed spending
-- ✅ **MuSig2 Integration** - Aggregated signature framework for institutions
-- ✅ **Full Taproot Integration** - BIP 340/341/342 with Shell-specific rules
-  - ✅ Shell Taproot builder with vault/channel/claimable leaf types
-  - ✅ Custom leaf version (0xC2) for vault covenants
-  - ✅ Witness validation for institutional features
-- ✅ **Complete Settlement** - Full L1 settlement layer implementation
-  - ✅ Payment channels with state tracking and validation
-  - ✅ Claimable balances with predicate evaluation
-  - ✅ Consensus-level validation for all operations
+### 🚧 Phase α.4 - Shell-Specific Features (Validation Complete - 90% Done)
+- ✅ **Shell-Specific Opcodes** - Validation logic implemented
+  - ✅ OP_VAULTTEMPLATEVERIFY - Parameter validation and format checking
+  - ✅ OP_CHANNEL_OPEN - Validates participants and amounts
+  - ✅ OP_CHANNEL_UPDATE - Checks nonce increment and balance conservation
+  - ✅ OP_CHANNEL_CLOSE - Validates channel ID format
+  - ✅ OP_CLAIMABLE_CREATE - Validates claimants and predicates
+  - ✅ OP_CLAIMABLE_CLAIM - Checks proof format and destination
+- ✅ **Data Structures** - Core types defined for institutional features
+- 🚧 **Consensus Integration** - Opcodes need to modify blockchain state
+- 🚧 **State Persistence** - Channel/claimable state storage pending
+- 🚧 **Full Taproot Integration** - Basic structure done, needs wire protocol
+- 🚧 **Complete Settlement** - Validation done, state tracking needs consensus hooks
 
 ## 🚀 Planned Features
 
@@ -97,9 +92,9 @@ This is the **Phase α (Core Chain)** implementation - **PHASE α COMPLETE!**
 
 ## 📋 Development Roadmap
 
-**Current Phase: β - Ready for Liquidity Stack & Reward Program**
+**Current Phase: α.4 - Validation Logic Complete, Consensus Integration Needed**
 
-1. **Phase α** (Months 0-3): ✅ Core Chain - **COMPLETE**
+1. **Phase α** (Months 0-3): 🚧 Core Chain - **90% Complete**
    - α.1: ✅ Project setup & basic structure  
    - α.2: ✅ RandomX integration (Full C++ implementation)
    - α.3: ✅ Confidential transactions
@@ -160,7 +155,7 @@ go build .  # <-- WORKS! All core chain features implemented!
 
 ## ⚠️ Development Notice
 
-**Phase α COMPLETE!** Shell Reserve core chain implementation is finished:
+**Phase α.4 Validation Logic COMPLETE!** Shell Reserve has all opcode validation implemented:
 
 ✅ **RandomX proof-of-work** - Full C++ integration with CPU mining  
 ✅ **Confidential transactions** - Pedersen commitments and range proofs  
@@ -172,21 +167,23 @@ go build .  # <-- WORKS! All core chain features implemented!
 ✅ **Settlement layer** - Payment channels and claimable balances  
 ✅ **Full consensus validation** - Complete institutional feature support
 
-### Phase α Completion Summary
-All core chain features are now implemented and tested:
-1. ✅ **Base Layer (L0)** - RandomX PoW, confidential transactions, UTXO model
-2. ✅ **Custody Layer (L0.7)** - MuSig2, vault covenants, Taproot
-3. ✅ **Settlement Layer (L1)** - Payment channels, claimable balances
-4. ✅ **Shell Opcodes** - All 6 institutional opcodes with validation
-5. ✅ **Address System** - Complete xsl* address generation
-6. ✅ **Node Software** - Full compilation and integration
+### What's Actually Complete
+Phase α.4 has implemented validation logic for all features, but full integration remains:
+1. ✅ **Opcode Validation** - All 6 opcodes validate parameters and check constraints
+2. ✅ **Data Structures** - Channels, claimable balances, vaults defined
+3. ✅ **Basic Taproot** - Shell-specific Taproot structure (needs integration)
+4. 🚧 **Consensus Integration** - Opcodes don't yet modify blockchain state
+5. 🚧 **Full Settlement** - Channel/claimable state tracking needs consensus hooks
+6. 🚧 **Complete MuSig2** - Framework exists but needs full implementation
 
-### Ready for Phase β!
-The core Shell Reserve blockchain is complete. Next steps:
-- **Phase β** - Liquidity reward program and attestor integration
-- **Phase β.5** - Advanced L1 settlement features
-- **Phase γ** - Security hardening and audits
-- **Phase δ** - Launch preparation for January 1, 2026
+### Still Needed for Phase α Completion
+To truly complete Phase α, these components need finishing:
+- **Blockchain State Integration** - Connect opcodes to UTXO set modifications
+- **Consensus Rules** - Full validation in block/transaction verification
+- **State Persistence** - Store channels/claimable balances in chainstate
+- **Witness Validation** - Complete Taproot witness verification
+- **Network Protocol** - P2P message handling for new transaction types
+- **RPC Interface** - Commands to interact with institutional features
 
 ## 🏛️ Constitutional Principles
 
@@ -203,7 +200,7 @@ Shell Reserve is governed by immutable principles:
 **Shell Reserve: Built to last, not to impress.**
 
 *Target Launch Date: January 1, 2026, 00:00 UTC*  
-*Current Status: Phase α Complete - Ready for Phase β (Liquidity Stack & Reward Program)* 
+*Current Status: Phase α.4 Validation Complete - Integration with Consensus Layer Pending* 
 
 ## ⚡ Current Functionality
 
