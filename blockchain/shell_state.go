@@ -1,0 +1,413 @@
+// Package blockchain provides Shell Reserve's extended blockchain state management
+// for institutional features like payment channels and claimable balances.
+package blockchain
+
+import (
+	"fmt"
+
+	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/btcsuite/btcd/btcec/v2/ecdsa"
+	"github.com/btcsuite/btcd/btcutil"
+	btcdchainhash "github.com/btcsuite/btcd/chaincfg/chainhash"
+	btcdwire "github.com/btcsuite/btcd/wire"
+	"github.com/toole-brendan/shell/chaincfg/chainhash"
+	"github.com/toole-brendan/shell/settlement/channels"
+	"github.com/toole-brendan/shell/settlement/claimable"
+	"github.com/toole-brendan/shell/txscript"
+	"github.com/toole-brendan/shell/wire"
+)
+
+// Type conversion helpers
+func btcdHashToShellHash(btcdHash *btcdchainhash.Hash) chainhash.Hash {
+	var shellHash chainhash.Hash
+	copy(shellHash[:], btcdHash[:])
+	return shellHash
+}
+
+func btcdOutPointToShellOutPoint(btcdOutPoint btcdwire.OutPoint) wire.OutPoint {
+	return wire.OutPoint{
+		Hash:  btcdHashToShellHash(&btcdOutPoint.Hash),
+		Index: btcdOutPoint.Index,
+	}
+}
+
+// ShellStateKey represents keys for Shell-specific state storage
+type ShellStateKey uint8
+
+const (
+	// State key prefixes for different types of Shell state
+	StateKeyChannel   ShellStateKey = 0x01
+	StateKeyClaimable ShellStateKey = 0x02
+	StateKeyVault     ShellStateKey = 0x03
+)
+
+// ShellChainState extends UtxoViewpoint with Shell-specific state
+type ShellChainState struct {
+	*UtxoViewpoint
+
+	// Channel state
+	channelState *channels.ChannelState
+
+	// Claimable balance state
+	claimableState *claimable.ClaimableState
+
+	// Modified state tracking
+	modifiedChannels   map[channels.ChannelID]*channels.PaymentChannel
+	modifiedClaimables map[claimable.ClaimableID]*claimable.ClaimableBalance
+	deletedChannels    map[channels.ChannelID]struct{}
+	deletedClaimables  map[claimable.ClaimableID]struct{}
+}
+
+// NewShellChainState creates a new Shell chain state
+func NewShellChainState(utxoView *UtxoViewpoint) *ShellChainState {
+	return &ShellChainState{
+		UtxoViewpoint:      utxoView,
+		channelState:       channels.NewChannelState(),
+		claimableState:     claimable.NewClaimableState(),
+		modifiedChannels:   make(map[channels.ChannelID]*channels.PaymentChannel),
+		modifiedClaimables: make(map[claimable.ClaimableID]*claimable.ClaimableBalance),
+		deletedChannels:    make(map[channels.ChannelID]struct{}),
+		deletedClaimables:  make(map[claimable.ClaimableID]struct{}),
+	}
+}
+
+// ProcessShellOpcode handles Shell-specific opcode execution
+func (scs *ShellChainState) ProcessShellOpcode(opcode byte, tx *btcutil.Tx, txIdx int, blockHeight int32) error {
+	switch opcode {
+	case 0xc6: // OP_CHANNEL_OPEN
+		return scs.processChannelOpen(tx, txIdx, blockHeight)
+
+	case 0xc7: // OP_CHANNEL_UPDATE
+		return scs.processChannelUpdate(tx, txIdx)
+
+	case 0xc8: // OP_CHANNEL_CLOSE
+		return scs.processChannelClose(tx, txIdx)
+
+	case 0xc9: // OP_CLAIMABLE_CREATE
+		return scs.processClaimableCreate(tx, txIdx, blockHeight)
+
+	case 0xca: // OP_CLAIMABLE_CLAIM
+		return scs.processClaimableClaim(tx, txIdx, blockHeight)
+
+	default:
+		return fmt.Errorf("unknown Shell opcode: 0x%02x", opcode)
+	}
+}
+
+// processChannelOpen handles OP_CHANNEL_OPEN execution
+func (scs *ShellChainState) processChannelOpen(tx *btcutil.Tx, txIdx int, blockHeight int32) error {
+	msgTx := tx.MsgTx()
+	if txIdx >= len(msgTx.TxOut) {
+		return fmt.Errorf("invalid output index for channel open")
+	}
+
+	// Get the script and witness data
+	output := msgTx.TxOut[txIdx]
+
+	// For Taproot spending, witness data is in the input that spends this output
+	// For channel creation, we look at the witness of the funding transaction
+	var witness btcdwire.TxWitness
+	if len(msgTx.TxIn) > 0 && len(msgTx.TxIn[0].Witness) > 0 {
+		witness = msgTx.TxIn[0].Witness
+	}
+
+	// Extract channel parameters from witness
+	params, err := txscript.ExtractChannelOpenParams(output.PkScript, witness)
+	if err != nil {
+		return fmt.Errorf("failed to extract channel open parameters: %v", err)
+	}
+
+	// Create funding outpoint (convert from btcd to Shell types)
+	txHash := tx.Hash()
+	btcdOutPoint := btcdwire.OutPoint{
+		Hash:  *txHash,
+		Index: uint32(txIdx),
+	}
+	fundingOutpoint := btcdOutPointToShellOutPoint(btcdOutPoint)
+
+	// Validate output amount matches channel capacity
+	if uint64(output.Value) != params.ChannelAmount {
+		return fmt.Errorf("output value %d does not match channel amount %d",
+			output.Value, params.ChannelAmount)
+	}
+
+	// Open the channel
+	expiry := uint32(blockHeight + 144*30) // 30 days default expiry
+	channel, err := scs.channelState.OpenChannel(
+		params.ChannelAlice,
+		params.ChannelBob,
+		params.ChannelAmount,
+		expiry,
+		fundingOutpoint,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to open channel: %v", err)
+	}
+
+	// Track the modification
+	scs.modifiedChannels[channel.ChannelID] = channel
+
+	return nil
+}
+
+// processChannelUpdate handles OP_CHANNEL_UPDATE execution
+func (scs *ShellChainState) processChannelUpdate(tx *btcutil.Tx, txIdx int) error {
+	msgTx := tx.MsgTx()
+	if txIdx >= len(msgTx.TxIn) {
+		return fmt.Errorf("invalid input index for channel update")
+	}
+
+	// Get witness data from the input being spent
+	witness := msgTx.TxIn[txIdx].Witness
+	if len(witness) == 0 {
+		return fmt.Errorf("channel update requires witness data")
+	}
+
+	// Extract channel update parameters
+	params, err := txscript.ExtractChannelUpdateParams(nil, witness)
+	if err != nil {
+		return fmt.Errorf("failed to extract channel update parameters: %v", err)
+	}
+
+	// Create channel update
+	update := &channels.ChannelUpdate{
+		ChannelID: params.ChannelID,
+		Balances:  params.ChannelBalances,
+		Nonce:     params.ChannelNonce,
+		// TODO: Extract and validate signatures from witness
+		Signatures: [2]*ecdsa.Signature{nil, nil},
+	}
+
+	// Process the update
+	err = scs.channelState.UpdateChannel(update)
+	if err != nil {
+		return fmt.Errorf("failed to update channel: %v", err)
+	}
+
+	// Get updated channel for tracking
+	channel, err := scs.channelState.GetChannel(params.ChannelID)
+	if err != nil {
+		return fmt.Errorf("failed to get updated channel: %v", err)
+	}
+
+	// Track the modification
+	scs.modifiedChannels[channel.ChannelID] = channel
+
+	return nil
+}
+
+// processChannelClose handles OP_CHANNEL_CLOSE execution
+func (scs *ShellChainState) processChannelClose(tx *btcutil.Tx, txIdx int) error {
+	msgTx := tx.MsgTx()
+	if txIdx >= len(msgTx.TxIn) {
+		return fmt.Errorf("invalid input index for channel close")
+	}
+
+	// Get witness data from the input being spent
+	witness := msgTx.TxIn[txIdx].Witness
+	if len(witness) == 0 {
+		return fmt.Errorf("channel close requires witness data")
+	}
+
+	// Extract channel close parameters
+	params, err := txscript.ExtractChannelCloseParams(nil, witness)
+	if err != nil {
+		return fmt.Errorf("failed to extract channel close parameters: %v", err)
+	}
+
+	// Close the channel
+	channel, err := scs.channelState.CloseChannel(params.ChannelID)
+	if err != nil {
+		return fmt.Errorf("failed to close channel: %v", err)
+	}
+
+	// Track the deletion
+	scs.deletedChannels[params.ChannelID] = struct{}{}
+
+	// Verify that the transaction outputs match the final channel balances
+	if len(msgTx.TxOut) < 2 {
+		return fmt.Errorf("channel close must have at least 2 outputs")
+	}
+
+	// Check balance distribution (simplified - would need more validation in production)
+	totalOutputValue := int64(0)
+	for _, output := range msgTx.TxOut {
+		totalOutputValue += output.Value
+	}
+
+	if uint64(totalOutputValue) > channel.Capacity {
+		return fmt.Errorf("channel close outputs exceed channel capacity")
+	}
+
+	return nil
+}
+
+// processClaimableCreate handles OP_CLAIMABLE_CREATE execution
+func (scs *ShellChainState) processClaimableCreate(tx *btcutil.Tx, txIdx int, blockHeight int32) error {
+	msgTx := tx.MsgTx()
+	if txIdx >= len(msgTx.TxOut) {
+		return fmt.Errorf("invalid output index for claimable create")
+	}
+
+	// Get the script and witness data
+	output := msgTx.TxOut[txIdx]
+
+	// For claimable creation, witness is in the input
+	var witness btcdwire.TxWitness
+	if len(msgTx.TxIn) > 0 && len(msgTx.TxIn[0].Witness) > 0 {
+		witness = msgTx.TxIn[0].Witness
+	}
+
+	// Extract claimable balance parameters
+	params, err := txscript.ExtractClaimableCreateParams(output.PkScript, witness)
+	if err != nil {
+		return fmt.Errorf("failed to extract claimable create parameters: %v", err)
+	}
+
+	// Validate output amount matches claimable amount
+	if uint64(output.Value) != params.ClaimableAmount {
+		return fmt.Errorf("output value %d does not match claimable amount %d",
+			output.Value, params.ClaimableAmount)
+	}
+
+	// Create funding outpoint (convert from btcd to Shell types)
+	txHash := tx.Hash()
+	btcdOutPoint := btcdwire.OutPoint{
+		Hash:  *txHash,
+		Index: uint32(txIdx),
+	}
+	fundingOutpoint := btcdOutPointToShellOutPoint(btcdOutPoint)
+
+	// TODO: Extract creator from transaction signature/witness
+	// For now, use first claimant as creator (simplified)
+	var creator *btcec.PublicKey
+	if len(params.ClaimableClaimants) > 0 {
+		creator = params.ClaimableClaimants[0].Destination
+	}
+
+	// Create the claimable balance
+	balance, err := scs.claimableState.CreateClaimableBalance(
+		creator,
+		params.ClaimableAmount,
+		params.ClaimableClaimants,
+		uint32(blockHeight),
+		fundingOutpoint,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create claimable balance: %v", err)
+	}
+
+	// Track the modification
+	scs.modifiedClaimables[balance.ID] = balance
+
+	return nil
+}
+
+// processClaimableClaim handles OP_CLAIMABLE_CLAIM execution
+func (scs *ShellChainState) processClaimableClaim(tx *btcutil.Tx, txIdx int, blockHeight int32) error {
+	msgTx := tx.MsgTx()
+	if txIdx >= len(msgTx.TxIn) {
+		return fmt.Errorf("invalid input index for claimable claim")
+	}
+
+	// Get witness data from the input being spent
+	witness := msgTx.TxIn[txIdx].Witness
+	if len(witness) == 0 {
+		return fmt.Errorf("claimable claim requires witness data")
+	}
+
+	// Extract claimable claim parameters
+	params, err := txscript.ExtractClaimableClaimParams(nil, witness)
+	if err != nil {
+		return fmt.Errorf("failed to extract claimable claim parameters: %v", err)
+	}
+
+	// Add current block timestamp to proof
+	params.ClaimableProof.Timestamp = uint32(blockHeight * 300) // 5-minute blocks
+
+	// Claim the balance
+	balance, err := scs.claimableState.ClaimBalance(
+		params.ClaimableID,
+		params.ClaimableClaimer,
+		params.ClaimableProof,
+		uint32(blockHeight),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to claim balance: %v", err)
+	}
+
+	// Verify that the transaction output goes to the claimer
+	if len(msgTx.TxOut) == 0 {
+		return fmt.Errorf("claimable claim must have at least one output")
+	}
+
+	// Track the deletion
+	scs.deletedClaimables[params.ClaimableID] = struct{}{}
+
+	// Check that claimed amount doesn't exceed balance (simplified validation)
+	totalOutputValue := int64(0)
+	for _, output := range msgTx.TxOut {
+		totalOutputValue += output.Value
+	}
+
+	if uint64(totalOutputValue) > balance.Amount {
+		return fmt.Errorf("claimed amount exceeds claimable balance")
+	}
+
+	return nil
+}
+
+// Commit applies all modifications to the underlying database
+func (scs *ShellChainState) Commit() error {
+	// First commit standard UTXO changes
+	scs.UtxoViewpoint.commit()
+
+	// Then commit Shell-specific state changes
+	// TODO: Implement database persistence for Shell state
+	// For now, state is only kept in memory
+
+	// Clear modification tracking after commit
+	scs.modifiedChannels = make(map[channels.ChannelID]*channels.PaymentChannel)
+	scs.modifiedClaimables = make(map[claimable.ClaimableID]*claimable.ClaimableBalance)
+	scs.deletedChannels = make(map[channels.ChannelID]struct{})
+	scs.deletedClaimables = make(map[claimable.ClaimableID]struct{})
+
+	return nil
+}
+
+// CalculateShellStateHash computes a hash of all Shell state for block headers
+func (scs *ShellChainState) CalculateShellStateHash() chainhash.Hash {
+	// Compute deterministic hash of all channels and claimable balances
+	// This would be included in Shell block headers for state commitment
+
+	// TODO: Implement actual state hashing
+	return chainhash.Hash{}
+}
+
+// GetChannelState returns the channel state manager
+func (scs *ShellChainState) GetChannelState() *channels.ChannelState {
+	return scs.channelState
+}
+
+// GetClaimableState returns the claimable balance state manager
+func (scs *ShellChainState) GetClaimableState() *claimable.ClaimableState {
+	return scs.claimableState
+}
+
+// GetModifiedChannels returns channels modified in this state
+func (scs *ShellChainState) GetModifiedChannels() map[channels.ChannelID]*channels.PaymentChannel {
+	result := make(map[channels.ChannelID]*channels.PaymentChannel)
+	for id, channel := range scs.modifiedChannels {
+		result[id] = channel
+	}
+	return result
+}
+
+// GetModifiedClaimables returns claimable balances modified in this state
+func (scs *ShellChainState) GetModifiedClaimables() map[claimable.ClaimableID]*claimable.ClaimableBalance {
+	result := make(map[claimable.ClaimableID]*claimable.ClaimableBalance)
+	for id, balance := range scs.modifiedClaimables {
+		result[id] = balance
+	}
+	return result
+}

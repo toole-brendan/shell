@@ -307,8 +307,18 @@ const (
 func ComputeShellTaprootSigHash(tx *wire.MsgTx, idx int, prevOuts []wire.TxOut,
 	sigHashType ShellTaprootSigHashType, leafScript []byte, leafVersion uint8) ([32]byte, error) {
 
+	// Create proper prevout fetcher from slice
+	prevOutMap := make(map[wire.OutPoint]*wire.TxOut)
+	for i, prevOut := range prevOuts {
+		outpoint := wire.OutPoint{
+			Hash:  tx.TxIn[i].PreviousOutPoint.Hash,
+			Index: tx.TxIn[i].PreviousOutPoint.Index,
+		}
+		prevOutMap[outpoint] = &prevOut
+	}
+
 	// Use standard BIP 341 sighash computation
-	sigHashes := NewTxSigHashes(tx, NewMultiPrevOutFetcher(prevOuts))
+	sigHashes := NewTxSigHashes(tx, NewMultiPrevOutFetcher(prevOutMap))
 
 	// Convert Shell sighash type to standard type
 	standardType := SigHashType(sigHashType)
@@ -317,7 +327,7 @@ func ComputeShellTaprootSigHash(tx *wire.MsgTx, idx int, prevOuts []wire.TxOut,
 	if leafScript == nil {
 		// Key spend path
 		hash, err := calcTaprootSignatureHashRaw(
-			sigHashes, standardType, tx, idx, NewMultiPrevOutFetcher(prevOuts),
+			sigHashes, standardType, tx, idx, NewMultiPrevOutFetcher(prevOutMap),
 		)
 		if err != nil {
 			return [32]byte{}, err
@@ -329,7 +339,7 @@ func ComputeShellTaprootSigHash(tx *wire.MsgTx, idx int, prevOuts []wire.TxOut,
 	} else {
 		// Script spend path
 		hash, err := calcTaprootSignatureHashRaw(
-			sigHashes, standardType, tx, idx, NewMultiPrevOutFetcher(prevOuts),
+			sigHashes, standardType, tx, idx, NewMultiPrevOutFetcher(prevOutMap),
 		)
 		if err != nil {
 			return [32]byte{}, err
@@ -372,7 +382,7 @@ func ValidateShellTaprootWitness(witness wire.TxWitness, prevOut *wire.TxOut) er
 		}
 		// TODO: Validate vault template and signatures
 
-	case BaseLeafVersion:
+	case byte(BaseLeafVersion):
 		// Standard tapscript validation
 		// Shell opcodes will be validated during script execution
 
