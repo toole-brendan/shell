@@ -11,12 +11,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/toole-brendan/shell/blockchain/internal/testhelper"
 	"github.com/btcsuite/btcd/btcutil"
+	btcwire "github.com/btcsuite/btcd/wire"
+	"github.com/toole-brendan/shell/blockchain/internal/testhelper"
 	"github.com/toole-brendan/shell/chaincfg"
 	"github.com/toole-brendan/shell/chaincfg/chainhash"
-	"github.com/toole-brendan/shell/wire"
 	"github.com/toole-brendan/shell/internal/convert"
+	"github.com/toole-brendan/shell/wire"
 )
 
 // TestHaveBlock tests the HaveBlock API to ensure proper functionality.
@@ -143,8 +144,8 @@ func TestCalcSequenceLock(t *testing.T) {
 	// Create a utxo view with a fake utxo for the inputs used in the
 	// transactions created below.  This utxo is added such that it has an
 	// age of 4 blocks.
-	targetTx := btcutil.NewTx(&wire.MsgTx{
-		TxOut: []*wire.TxOut{{
+	targetTx := btcutil.NewTx(&btcwire.MsgTx{
+		TxOut: []*btcwire.TxOut{{
 			PkScript: nil,
 			Value:    10,
 		}},
@@ -1399,7 +1400,7 @@ func TestInvalidateBlock(t *testing.T) {
 				}
 				invalidateHash := block.Hash()
 
-				return chain, []*chainhash.Hash{invalidateHash}, tearDown
+				return chain, []*chainhash.Hash{convert.HashToShell(invalidateHash)}, tearDown
 			},
 		},
 		{
@@ -1440,13 +1441,13 @@ func TestInvalidateBlock(t *testing.T) {
 				invalidateHash2 := altBlockHashes[3]
 
 				// Sanity checking that we grabbed the correct hash.
-				node := chain.index.LookupNode(invalidateHash)
+				node := chain.index.LookupNode(convert.HashToShell(invalidateHash))
 				if node == nil || node.height != 5 {
 					t.Fatalf("wanted to grab block at height 5 but got height %v",
 						node.height)
 				}
 
-				return chain, []*chainhash.Hash{invalidateHash, invalidateHash2}, tearDown
+				return chain, []*chainhash.Hash{convert.HashToShell(invalidateHash), invalidateHash2}, tearDown
 			},
 		},
 		{
@@ -1648,7 +1649,7 @@ func TestReconsiderBlock(t *testing.T) {
 				}
 				invalidateHash := block.Hash()
 
-				return chain, []*chainhash.Hash{invalidateHash}, tearDown
+				return chain, []*chainhash.Hash{convert.HashToShell(invalidateHash)}, tearDown
 			},
 		},
 		{
@@ -1680,7 +1681,7 @@ func TestReconsiderBlock(t *testing.T) {
 					t.Fatal(err)
 				}
 
-				return chain, []*chainhash.Hash{invalidateHash}, tearDown
+				return chain, []*chainhash.Hash{convert.HashToShell(invalidateHash)}, tearDown
 			},
 		},
 		{
@@ -1744,7 +1745,7 @@ func TestReconsiderBlock(t *testing.T) {
 				// Modify the amount again so it's valid.
 				nextSpends[0].Amount -= testhelper.LowFee
 
-				return chain, []*chainhash.Hash{invalidateHash}, tearDown
+				return chain, []*chainhash.Hash{convert.HashToShell(invalidateHash)}, tearDown
 			},
 		},
 		{
@@ -1785,7 +1786,7 @@ func TestReconsiderBlock(t *testing.T) {
 					t.Fatal(err)
 				}
 
-				return chain, []*chainhash.Hash{invalidateHash}, tearDown
+				return chain, []*chainhash.Hash{convert.HashToShell(invalidateHash)}, tearDown
 			},
 		},
 	}

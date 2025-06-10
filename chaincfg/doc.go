@@ -44,13 +44,10 @@
 //
 //	        // later...
 //
-//	        // Create and print new payment address, specific to the active network.
-//	        pubKeyHash := make([]byte, 20)
-//	        addr, err := btcutil.NewAddressPubKeyHash(pubKeyHash, convert.ParamsToBtc(chainParams))
-//	        if err != nil {
-//	                log.Fatal(err)
-//	        }
-//	        fmt.Println(addr)
+//	        // Access chain parameters directly for network-specific operations.
+//	        // For btcsuite integration, use conversion utilities from your calling code.
+//	        fmt.Printf("Network name: %s\n", chainParams.Name)
+//	        fmt.Printf("Genesis hash: %s\n", chainParams.GenesisHash)
 //	}
 //
 // If an application does not use one of the three standard Bitcoin networks,
@@ -59,7 +56,3 @@
 // should be unique to the network, but parameter collisions can still occur
 // (unfortunately, this is the case with regtest and testnet3 sharing magics).
 package chaincfg
-
-import (
-	"github.com/toole-brendan/shell/internal/convert"
-)

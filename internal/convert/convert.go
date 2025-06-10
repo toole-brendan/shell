@@ -7,9 +7,9 @@ import (
 	btcchainhash "github.com/btcsuite/btcd/chaincfg/chainhash"
 	btcwire "github.com/btcsuite/btcd/wire"
 
-	shellchaincfg "github.com/toole-brendan/shell/chaincfg"
 	shellchainhash "github.com/toole-brendan/shell/chaincfg/chainhash"
 	shellwire "github.com/toole-brendan/shell/wire"
+	wire "github.com/toole-brendan/shell/wire"
 )
 
 // HashToShell converts a btcsuite chainhash.Hash to a shell chainhash.Hash
@@ -64,13 +64,13 @@ func OutPointPtrToBtc(op *shellwire.OutPoint) btcwire.OutPoint {
 	return OutPointToBtc(*op)
 }
 
-// ParamsToBtc converts shell chaincfg.Params to btcsuite chaincfg.Params
-func ParamsToBtc(params *shellchaincfg.Params) *btcchaincfg.Params {
-	if params == nil {
+// ParamsToBtc converts a shell network name to btcsuite chaincfg.Params
+func ParamsToBtc(networkName string) *btcchaincfg.Params {
+	if networkName == "" {
 		return nil
 	}
 	// Map common network parameters
-	switch params.Name {
+	switch networkName {
 	case "mainnet":
 		return &btcchaincfg.MainNetParams
 	case "testnet3":
@@ -85,29 +85,6 @@ func ParamsToBtc(params *shellchaincfg.Params) *btcchaincfg.Params {
 		// For custom networks, return mainnet as fallback
 		// In production, you might want to create a proper mapping
 		return &btcchaincfg.MainNetParams
-	}
-}
-
-// ParamsToShell converts btcsuite chaincfg.Params to shell chaincfg.Params
-func ParamsToShell(params *btcchaincfg.Params) *shellchaincfg.Params {
-	if params == nil {
-		return nil
-	}
-	// Map common network parameters
-	switch params.Name {
-	case "mainnet":
-		return &shellchaincfg.MainNetParams
-	case "testnet3":
-		return &shellchaincfg.TestNet3Params
-	case "regtest":
-		return &shellchaincfg.RegressionNetParams
-	case "simnet":
-		return &shellchaincfg.SimNetParams
-	case "signet":
-		return &shellchaincfg.SigNetParams
-	default:
-		// For custom networks, return mainnet as fallback
-		return &shellchaincfg.MainNetParams
 	}
 }
 
@@ -392,5 +369,84 @@ func BlockHeaderToBtc(header *shellwire.BlockHeader) *btcwire.BlockHeader {
 		Timestamp:  header.Timestamp,
 		Bits:       header.Bits,
 		Nonce:      header.Nonce,
+	}
+}
+
+func ToShellBlockHeader(header *btcwire.BlockHeader) *wire.BlockHeader {
+	if header == nil {
+		return nil
+	}
+
+	return &wire.BlockHeader{
+		Version:    header.Version,
+		PrevBlock:  *HashToShell(&header.PrevBlock),
+		MerkleRoot: *HashToShell(&header.MerkleRoot),
+		Timestamp:  header.Timestamp,
+		Bits:       header.Bits,
+		Nonce:      header.Nonce,
+	}
+}
+
+func ToShellOutPoint(out *btcwire.OutPoint) *wire.OutPoint {
+	if out == nil {
+		return nil
+	}
+
+	return &wire.OutPoint{
+		Hash:  *HashToShell(&out.Hash),
+		Index: out.Index,
+	}
+}
+
+func ToShellTxIn(txIn *btcwire.TxIn) *wire.TxIn {
+	if txIn == nil {
+		return nil
+	}
+
+	witness := make([][]byte, len(txIn.Witness))
+	for i, w := range txIn.Witness {
+		witness[i] = make([]byte, len(w))
+		copy(witness[i], w)
+	}
+
+	return &wire.TxIn{
+		PreviousOutPoint: *ToShellOutPoint(&txIn.PreviousOutPoint),
+		SignatureScript:  txIn.SignatureScript,
+		Witness:          witness,
+		Sequence:         txIn.Sequence,
+	}
+}
+
+func ToShellTxOut(txOut *btcwire.TxOut) *wire.TxOut {
+	if txOut == nil {
+		return nil
+	}
+
+	return &wire.TxOut{
+		Value:    txOut.Value,
+		PkScript: txOut.PkScript,
+	}
+}
+
+func ToShellMsgTx(tx *btcwire.MsgTx) *wire.MsgTx {
+	if tx == nil {
+		return nil
+	}
+
+	shellTxIns := make([]*wire.TxIn, len(tx.TxIn))
+	for i, txIn := range tx.TxIn {
+		shellTxIns[i] = ToShellTxIn(txIn)
+	}
+
+	shellTxOuts := make([]*wire.TxOut, len(tx.TxOut))
+	for i, txOut := range tx.TxOut {
+		shellTxOuts[i] = ToShellTxOut(txOut)
+	}
+
+	return &wire.MsgTx{
+		Version:  tx.Version,
+		TxIn:     shellTxIns,
+		TxOut:    shellTxOuts,
+		LockTime: tx.LockTime,
 	}
 }

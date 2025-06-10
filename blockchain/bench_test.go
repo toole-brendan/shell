@@ -7,6 +7,7 @@ package blockchain
 import (
 	"testing"
 
+	"github.com/toole-brendan/shell/internal/convert"
 	"github.com/toole-brendan/shell/wire"
 )
 
@@ -39,7 +40,7 @@ func BenchmarkUtxoFetchMap(b *testing.B) {
 		needed := make(map[wire.OutPoint]struct{}, len(transactions))
 		for _, tx := range transactions[1:] {
 			for _, txIn := range tx.TxIn {
-				needed[convert.OutPointToShell(&txIn.PreviousOutPoint)] = struct{}{}
+				needed[txIn.PreviousOutPoint] = struct{}{}
 			}
 		}
 	}

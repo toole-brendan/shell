@@ -6,9 +6,6 @@
 package txscript_test
 
 import (
-	"github.com/toole-brendan/shell/internal/convert"
-)
-import (
 	"encoding/hex"
 	"fmt"
 
@@ -16,6 +13,7 @@ import (
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/toole-brendan/shell/chaincfg"
 	"github.com/toole-brendan/shell/chaincfg/chainhash"
+	"github.com/toole-brendan/shell/internal/convert"
 	"github.com/toole-brendan/shell/txscript"
 	"github.com/toole-brendan/shell/wire"
 )
@@ -29,7 +27,7 @@ func ExamplePayToAddrScript() {
 	// the address type.  It is also required for the upcoming call to
 	// PayToAddrScript.
 	addressStr := "12gpXQVcCL2qhTNQgyLVdCFG2Qs2px98nV"
-	address, err := btcutil.DecodeAddress(addressStr, convert.ParamsToBtc(&chaincfg.MainNetParams))
+	address, err := btcutil.DecodeAddress(addressStr, convert.ParamsToBtc("mainnet"))
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -96,7 +94,7 @@ func ExampleSignTxOutput() {
 	privKey, pubKey := btcec.PrivKeyFromBytes(privKeyBytes)
 	pubKeyHash := btcutil.Hash160(pubKey.SerializeCompressed())
 	addr, err := btcutil.NewAddressPubKeyHash(pubKeyHash,
-		&chaincfg.MainNetParams)
+		convert.ParamsToBtc("mainnet"))
 	if err != nil {
 		fmt.Println(err)
 		return

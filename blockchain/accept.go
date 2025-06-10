@@ -9,6 +9,7 @@ import (
 
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/toole-brendan/shell/database"
+	"github.com/toole-brendan/shell/internal/convert"
 )
 
 // maybeAcceptBlock potentially accepts a block into the block chain and, if
@@ -25,7 +26,7 @@ func (b *BlockChain) maybeAcceptBlock(block *btcutil.Block, flags BehaviorFlags)
 	// The height of this block is one more than the referenced previous
 	// block.
 	prevHash := &block.MsgBlock().Header.PrevBlock
-	prevNode := b.index.LookupNode(prevHash)
+	prevNode := b.index.LookupNode(convert.HashToShell(prevHash))
 	if prevNode == nil {
 		str := fmt.Sprintf("previous block %s is unknown", prevHash)
 		return false, ruleError(ErrPreviousBlockUnknown, str)
@@ -64,7 +65,7 @@ func (b *BlockChain) maybeAcceptBlock(block *btcutil.Block, flags BehaviorFlags)
 	// if the block ultimately gets connected to the main chain, it starts out
 	// on a side chain.
 	blockHeader := &block.MsgBlock().Header
-	newNode := newBlockNode(blockHeader, prevNode)
+	newNode := newBlockNode(convert.BlockHeaderToShell(blockHeader), prevNode)
 	newNode.status = statusDataStored
 
 	b.index.AddNode(newNode)

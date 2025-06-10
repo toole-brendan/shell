@@ -123,9 +123,14 @@ func BuildMerkleTreeStore(transactions []*btcutil.Tx, witness bool) []*chainhash
 			merkles[i] = &zeroHash
 		case witness:
 			wSha := tx.MsgTx().WitnessHash()
-			merkles[i] = &wSha
+			var h chainhash.Hash
+			copy(h[:], wSha[:])
+			merkles[i] = &h
 		default:
-			merkles[i] = tx.Hash()
+			originalHash := tx.Hash()
+			var h chainhash.Hash
+			copy(h[:], originalHash[:])
+			merkles[i] = &h
 		}
 
 	}

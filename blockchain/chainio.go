@@ -15,8 +15,8 @@ import (
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/toole-brendan/shell/chaincfg/chainhash"
 	"github.com/toole-brendan/shell/database"
-	"github.com/toole-brendan/shell/wire"
 	"github.com/toole-brendan/shell/internal/convert"
+	"github.com/toole-brendan/shell/wire"
 )
 
 const (
@@ -463,7 +463,11 @@ func dbFetchSpendJournalEntry(dbTx database.Tx, block *btcutil.Block) ([]SpentTx
 	spendBucket := dbTx.Metadata().Bucket(spendJournalBucketName)
 	serialized := spendBucket.Get(block.Hash()[:])
 	blockTxns := block.MsgBlock().Transactions[1:]
-	stxos, err := deserializeSpendJournalEntry(serialized, blockTxns)
+	shellTxns := make([]*wire.MsgTx, len(blockTxns))
+	for i, tx := range blockTxns {
+		shellTxns[i] = convert.ToShellMsgTx(tx)
+	}
+	stxos, err := deserializeSpendJournalEntry(serialized, shellTxns)
 	if err != nil {
 		// Ensure any deserialization errors are returned as database
 		// corruption errors.
@@ -1077,7 +1081,8 @@ func (b *BlockChain) createChainState() error {
 	genesisBlock := convert.NewShellBlock(b.chainParams.GenesisBlock)
 	genesisBlock.SetHeight(0)
 	header := &genesisBlock.MsgBlock().Header
-	node := newBlockNode(header, nil)
+	shellHeader := convert.ToShellBlockHeader(header)
+	node := newBlockNode(shellHeader, nil)
 	node.status = statusDataStored | statusValid
 	b.bestChain.SetTip(node)
 

@@ -14,15 +14,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/toole-brendan/shell/blockchain/internal/testhelper"
 	"github.com/btcsuite/btcd/btcutil"
+	"github.com/toole-brendan/shell/blockchain/internal/testhelper"
 	"github.com/toole-brendan/shell/chaincfg"
 	"github.com/toole-brendan/shell/chaincfg/chainhash"
 	"github.com/toole-brendan/shell/database"
 	_ "github.com/toole-brendan/shell/database/ffldb"
+	"github.com/toole-brendan/shell/internal/convert"
 	"github.com/toole-brendan/shell/txscript"
 	"github.com/toole-brendan/shell/wire"
-	"github.com/toole-brendan/shell/internal/convert"
 )
 
 const (
@@ -462,25 +462,30 @@ func newBlock(chain *BlockChain, prev *btcutil.Block,
 		ts = prev.MsgBlock().Header.Timestamp.Add(time.Second)
 	}
 
+	var prevBlockHash chainhash.Hash
+	copy(prevBlockHash[:], prev.Hash()[:])
+
 	// Create the block. The nonce will be solved in the below code in
 	// SolveBlock.
-	block := btcutil.NewBlock(&wire.MsgBlock{
+	msgBlock := &wire.MsgBlock{
 		Header: wire.BlockHeader{
 			Version:    1,
-			PrevBlock:  *prev.Hash(),
+			PrevBlock:  prevBlockHash,
 			MerkleRoot: calcMerkleRoot(txns),
 			Bits:       chain.chainParams.PowLimitBits,
 			Timestamp:  ts,
 			Nonce:      0, // To be solved.
 		},
 		Transactions: txns,
-	})
-	block.SetHeight(blockHeight)
+	}
 
 	// Solve the block.
-	if !testhelper.SolveBlock(&block.MsgBlock().Header) {
+	if !testhelper.SolveBlock(&msgBlock.Header) {
 		return nil, nil, fmt.Errorf("Unable to solve block at height %d", blockHeight)
 	}
+
+	block := convert.NewShellBlock(msgBlock)
+	block.SetHeight(blockHeight)
 
 	// Create spendable outs to return.
 	outs := make([]*testhelper.SpendableOut, len(txns))

@@ -10,9 +10,9 @@ import (
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/toole-brendan/shell/chaincfg/chainhash"
 	"github.com/toole-brendan/shell/database"
+	"github.com/toole-brendan/shell/internal/convert"
 	"github.com/toole-brendan/shell/txscript"
 	"github.com/toole-brendan/shell/wire"
-	"github.com/toole-brendan/shell/internal/convert"
 )
 
 // txoFlags is a bitmask defining additional information and state for a
@@ -256,7 +256,7 @@ func (view *UtxoViewpoint) AddTxOuts(tx *btcutil.Tx, blockHeight int32) {
 	// Loop all of the transaction outputs and add those which are not
 	// provably unspendable.
 	isCoinBase := IsCoinBase(tx)
-	prevOut := wire.OutPoint{Hash: *convert.HashToShell(tx.Hash()))}
+	prevOut := wire.OutPoint{Hash: *convert.HashToShell(tx.Hash())}
 	for txOutIdx, txOut := range tx.MsgTx().TxOut {
 		// Update existing entries.  All fields are updated because it's
 		// possible (although extremely unlikely) that the existing
@@ -588,7 +588,7 @@ func (view *UtxoViewpoint) findInputsToFetch(block *btcutil.Block) []wire.OutPoi
 	txInFlight := map[chainhash.Hash]int{}
 	transactions := block.Transactions()
 	for i, tx := range transactions {
-		txInFlight[convert.HashToShell(tx.Hash()))] = i
+		txInFlight[*convert.HashToShell(tx.Hash())] = i
 	}
 
 	// Loop through all of the transaction inputs (except for the coinbase
@@ -661,7 +661,7 @@ func (b *BlockChain) FetchUtxoView(tx *btcutil.Tx) (*UtxoViewpoint, error) {
 		neededLen += len(tx.MsgTx().TxIn)
 	}
 	needed := make([]wire.OutPoint, 0, neededLen)
-	prevOut := wire.OutPoint{Hash: *convert.HashToShell(tx.Hash()))}
+	prevOut := wire.OutPoint{Hash: *convert.HashToShell(tx.Hash())}
 	for txOutIdx := range tx.MsgTx().TxOut {
 		prevOut.Index = uint32(txOutIdx)
 		needed = append(needed, prevOut)

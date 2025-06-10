@@ -15,9 +15,9 @@ import (
 	"github.com/toole-brendan/shell/chaincfg"
 	"github.com/toole-brendan/shell/chaincfg/chainhash"
 	"github.com/toole-brendan/shell/database"
+	"github.com/toole-brendan/shell/internal/convert"
 	"github.com/toole-brendan/shell/txscript"
 	"github.com/toole-brendan/shell/wire"
-	"github.com/toole-brendan/shell/internal/convert"
 )
 
 const (
@@ -230,13 +230,10 @@ func (b *BlockChain) IsKnownOrphan(hash *chainhash.Hash) bool {
 //
 // This function is safe for concurrent access.
 func (b *BlockChain) GetOrphanRoot(hash *chainhash.Hash) *chainhash.Hash {
-	// Protect concurrent access.  Using a read lock only so multiple
-	// readers can query without blocking each other.
+	// Protect concurrent access.
 	b.orphanLock.RLock()
 	defer b.orphanLock.RUnlock()
 
-	// Keep looping while the parent of each orphaned block is
-	// known and is an orphan itself.
 	orphanRoot := hash
 	prevHash := hash
 	for {
@@ -245,7 +242,7 @@ func (b *BlockChain) GetOrphanRoot(hash *chainhash.Hash) *chainhash.Hash {
 			break
 		}
 		orphanRoot = prevHash
-		prevHash = &orphan.block.MsgBlock().Header.PrevBlock
+		prevHash = convert.HashToShell(&orphan.block.MsgBlock().Header.PrevBlock)
 	}
 
 	return orphanRoot
@@ -260,14 +257,14 @@ func (b *BlockChain) removeOrphanBlock(orphan *orphanBlock) {
 
 	// Remove the orphan block from the orphan pool.
 	orphanHash := orphan.block.Hash()
-	delete(b.orphans, *orphanHash)
+	delete(b.orphans, *convert.HashToShell(orphanHash))
 
 	// Remove the reference from the previous orphan index too.  An indexing
 	// for loop is intentionally used over a range here as range does not
 	// reevaluate the slice on each iteration nor does it adjust the index
 	// for the modified slice.
 	prevHash := &orphan.block.MsgBlock().Header.PrevBlock
-	orphans := b.prevOrphans[*prevHash]
+	orphans := b.prevOrphans[*convert.HashToShell(prevHash)]
 	for i := 0; i < len(orphans); i++ {
 		hash := orphans[i].block.Hash()
 		if hash.IsEqual(orphanHash) {
@@ -277,12 +274,12 @@ func (b *BlockChain) removeOrphanBlock(orphan *orphanBlock) {
 			i--
 		}
 	}
-	b.prevOrphans[*prevHash] = orphans
+	b.prevOrphans[*convert.HashToShell(prevHash)] = orphans
 
 	// Remove the map entry altogether if there are no longer any orphans
 	// which depend on the parent hash.
-	if len(b.prevOrphans[*prevHash]) == 0 {
-		delete(b.prevOrphans, *prevHash)
+	if len(b.prevOrphans[*convert.HashToShell(prevHash)]) == 0 {
+		delete(b.prevOrphans, *convert.HashToShell(prevHash))
 	}
 }
 
@@ -331,18 +328,7 @@ func (b *BlockChain) addOrphanBlock(block *btcutil.Block) {
 
 	// Add to previous hash lookup index for faster dependency lookups.
 	prevHash := &block.MsgBlock().Header.PrevBlock
-	b.prevOrphans[*prevHash] = append(b.prevOrphans[*prevHash], oBlock)
-}
-
-// SequenceLock represents the converted relative lock-time in seconds, and
-// absolute block-height for a transaction input's relative lock-times.
-// According to SequenceLock, after the referenced input has been confirmed
-// within a block, a transaction spending that input can be included into a
-// block either after 'seconds' (according to past median time), or once the
-// 'BlockHeight' has been reached.
-type SequenceLock struct {
-	Seconds     int64
-	BlockHeight int32
+	b.prevOrphans[*convert.HashToShell(prevHash)] = append(b.prevOrphans[*convert.HashToShell(prevHash)], oBlock)
 }
 
 // CalcSequenceLock computes a relative lock-time SequenceLock for the passed
@@ -406,7 +392,7 @@ func (b *BlockChain) calcSequenceLock(node *blockNode, tx *btcutil.Tx, utxoView 
 	nextHeight := node.height + 1
 
 	for txInIndex, txIn := range mTx.TxIn {
-		utxo := utxoView.LookupEntry(convert.OutPointToShell(&txIn.PreviousOutPoint))
+		utxo := utxoView.LookupEntry(convert.OutPointToShell(txIn.PreviousOutPoint))
 		if utxo == nil {
 			str := fmt.Sprintf("output %v referenced from "+
 				"transaction %s:%d either does not exist or "+
@@ -574,7 +560,7 @@ func (b *BlockChain) connectBlock(node *blockNode, block *btcutil.Block,
 
 	// Make sure it's extending the end of the best chain.
 	prevHash := &block.MsgBlock().Header.PrevBlock
-	if !prevHash.IsEqual(&b.bestChain.Tip().hash) {
+	if !prevHash.IsEqual(convert.HashToBtc(&b.bestChain.Tip().hash)) {
 		return AssertError("connectBlock must be called with a block " +
 			"that extends the main chain")
 	}
@@ -660,14 +646,14 @@ func (b *BlockChain) connectBlock(node *blockNode, block *btcutil.Block,
 
 		// Add the block hash and height to the block index which tracks
 		// the main chain.
-		err = dbPutBlockIndex(dbTx, block.Hash(), node.height)
+		err = dbPutBlockIndex(dbTx, convert.HashToShell(block.Hash()), node.height)
 		if err != nil {
 			return err
 		}
 
 		// Update the transaction spend journal by adding a record for
 		// the block that contains all txos spent by it.
-		err = dbPutSpendJournalEntry(dbTx, block.Hash(), stxos)
+		err = dbPutSpendJournalEntry(dbTx, convert.HashToShell(block.Hash()), stxos)
 		if err != nil {
 			return err
 		}
@@ -766,7 +752,7 @@ func (b *BlockChain) disconnectBlock(node *blockNode, block *btcutil.Block, view
 
 		// Remove the block hash and height from the block index which
 		// tracks the main chain.
-		err = dbRemoveBlockIndex(dbTx, block.Hash(), node.height)
+		err = dbRemoveBlockIndex(dbTx, convert.HashToShell(block.Hash()), node.height)
 		if err != nil {
 			return err
 		}
@@ -1036,7 +1022,7 @@ func (b *BlockChain) verifyReorganizationValidity(detachNodes, attachNodes *list
 		if err != nil {
 			return nil, nil, nil, err
 		}
-		if n.hash != *block.Hash() {
+		if n.hash != *convert.HashToShell(block.Hash()) {
 			return nil, nil, nil, AssertError(
 				fmt.Sprintf("detach block node hash %v (height "+
 					"%v) does not match previous parent block hash %v",
@@ -1171,7 +1157,7 @@ func (b *BlockChain) connectBestChain(node *blockNode, block *btcutil.Block, fla
 	// We are extending the main (best) chain with a new block.  This is the
 	// most common case.
 	parentHash := &block.MsgBlock().Header.PrevBlock
-	if parentHash.IsEqual(&b.bestChain.Tip().hash) {
+	if parentHash.IsEqual(convert.HashToBtc(&b.bestChain.Tip().hash)) {
 		// Skip checks if node has already been fully validated.
 		fastAdd = fastAdd || b.index.NodeStatus(node).KnownValid()
 
@@ -1191,7 +1177,7 @@ func (b *BlockChain) connectBestChain(node *blockNode, block *btcutil.Block, fla
 			// cache directly to the check connect block.  This would save on the
 			// expensive memory allocation done by fetch input utxos.
 			view := NewUtxoViewpoint()
-			view.SetBestHash(parentHash)
+			view.SetBestHash(convert.HashToShell(parentHash))
 			err := b.checkConnectBlock(node, block, view, nil)
 			if err == nil {
 				b.index.SetStatusFlags(node, statusValid)
@@ -1253,7 +1239,7 @@ func (b *BlockChain) connectBestChain(node *blockNode, block *btcutil.Block, fla
 	if node.workSum.Cmp(b.bestChain.Tip().workSum) <= 0 {
 		// Log information about how the block is forking the chain.
 		fork := b.bestChain.FindFork(node)
-		if fork.hash.IsEqual(parentHash) {
+		if fork.hash.IsEqual(convert.HashToShell(parentHash)) {
 			log.Infof("FORK: Block %v forks the chain at height %d"+
 				"/block %v, but does not cause a reorganize",
 				node.hash, fork.height, fork.hash)
@@ -2255,9 +2241,4 @@ func (b *BlockChain) CachedStateSize() uint64 {
 	b.chainLock.Lock()
 	defer b.chainLock.Unlock()
 	return b.utxoCache.totalMemoryUsage()
-}
-
-// CalcSequenceLock calculates the sequence lock for a transaction
-func (b *BlockChain) CalcSequenceLock(tx *btcutil.Tx, view *UtxoViewpoint, mempool bool) (*SequenceLock, error) {
-	return b.calcSequenceLock(b.bestChain.Tip(), tx, view, mempool)
 }

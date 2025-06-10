@@ -5,9 +5,6 @@
 package txscript
 
 import (
-	"github.com/toole-brendan/shell/internal/convert"
-)
-import (
 	"bytes"
 	"encoding/hex"
 	"errors"
@@ -16,6 +13,7 @@ import (
 
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/toole-brendan/shell/chaincfg"
+	"github.com/toole-brendan/shell/internal/convert"
 	"github.com/toole-brendan/shell/wire"
 )
 
@@ -39,7 +37,7 @@ func mustParseShortForm(script string) []byte {
 // in the test source code.
 func newAddressPubKey(serializedPubKey []byte) btcutil.Address {
 	addr, err := btcutil.NewAddressPubKey(serializedPubKey,
-		&chaincfg.MainNetParams)
+		convert.ParamsToBtc("mainnet"))
 	if err != nil {
 		panic("invalid public key in test source")
 	}
@@ -52,7 +50,7 @@ func newAddressPubKey(serializedPubKey []byte) btcutil.Address {
 // as a helper since the only way it can fail is if there is an error in the
 // test source code.
 func newAddressPubKeyHash(pkHash []byte) btcutil.Address {
-	addr, err := btcutil.NewAddressPubKeyHash(pkHash, convert.ParamsToBtc(&chaincfg.MainNetParams))
+	addr, err := btcutil.NewAddressPubKeyHash(pkHash, convert.ParamsToBtc("mainnet"))
 	if err != nil {
 		panic("invalid public key hash in test source")
 	}
@@ -66,7 +64,7 @@ func newAddressPubKeyHash(pkHash []byte) btcutil.Address {
 // test source code.
 func newAddressScriptHash(scriptHash []byte) btcutil.Address {
 	addr, err := btcutil.NewAddressScriptHashFromHash(scriptHash,
-		&chaincfg.MainNetParams)
+		convert.ParamsToBtc("mainnet"))
 	if err != nil {
 		panic("invalid script hash in test source")
 	}
@@ -80,7 +78,7 @@ func newAddressScriptHash(scriptHash []byte) btcutil.Address {
 // test source code.
 func newAddressTaproot(scriptHash []byte) btcutil.Address {
 	addr, err := btcutil.NewAddressTaproot(scriptHash,
-		&chaincfg.MainNetParams)
+		convert.ParamsToBtc("mainnet"))
 	if err != nil {
 		panic("invalid script hash in test source")
 	}

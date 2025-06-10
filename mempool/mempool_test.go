@@ -12,14 +12,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/toole-brendan/shell/blockchain"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcutil"
+	"github.com/toole-brendan/shell/blockchain"
 	"github.com/toole-brendan/shell/chaincfg"
 	"github.com/toole-brendan/shell/chaincfg/chainhash"
+	"github.com/toole-brendan/shell/internal/convert"
 	"github.com/toole-brendan/shell/txscript"
 	"github.com/toole-brendan/shell/wire"
-	"github.com/toole-brendan/shell/internal/convert"
 )
 
 // fakeChain is used by the pool harness to provide generated test utxos and
@@ -47,7 +47,7 @@ func (s *fakeChain) FetchUtxoView(tx *btcutil.Tx) (*blockchain.UtxoViewpoint, er
 
 	// Add an entry for the tx itself to the new view.
 	viewpoint := blockchain.NewUtxoViewpoint()
-	prevOut := wire.OutPoint{Hash: *convert.HashToShell(tx.Hash()),}
+	prevOut := wire.OutPoint{Hash: *convert.HashToShell(tx.Hash())}
 	for txOutIdx := range tx.MsgTx().TxOut {
 		prevOut.Index = uint32(txOutIdx)
 		entry := s.utxos.LookupEntry(prevOut)
@@ -56,8 +56,8 @@ func (s *fakeChain) FetchUtxoView(tx *btcutil.Tx) (*blockchain.UtxoViewpoint, er
 
 	// Add entries for all of the inputs to the tx to the new view.
 	for _, txIn := range tx.MsgTx().TxIn {
-		entry := s.utxos.LookupEntry(convert.OutPointToShell(&txIn.PreviousOutPoint))
-		viewpoint.Entries()[convert.OutPointToShell(&txIn.PreviousOutPoint)] = entry.Clone()
+		entry := s.utxos.LookupEntry(convert.OutPointToShell(txIn.PreviousOutPoint))
+		viewpoint.Entries()[convert.OutPointToShell(txIn.PreviousOutPoint)] = entry.Clone()
 	}
 
 	return viewpoint, nil
@@ -119,7 +119,7 @@ type spendableOutput struct {
 // transactions.
 func txOutToSpendableOut(tx *btcutil.Tx, outputNum uint32) spendableOutput {
 	return spendableOutput{
-		outPoint: wire.OutPoint{Hash: *convert.HashToShell(tx.Hash())), Index: outputNum},
+		outPoint: wire.OutPoint{Hash: *convert.HashToShell(tx.Hash()), Index: outputNum},
 		amount:   btcutil.Amount(tx.MsgTx().TxOut[outputNum].Value),
 	}
 }
@@ -297,7 +297,7 @@ func newPoolHarness(chainParams *chaincfg.Params) (*poolHarness, []spendableOutp
 	// Generate associated pay-to-script-hash address and resulting payment
 	// script.
 	pubKeyBytes := signPub.SerializeCompressed()
-	payPubKeyAddr, err := btcutil.NewAddressPubKey(pubKeyBytes, convert.ParamsToBtc(chainParams))
+	payPubKeyAddr, err := btcutil.NewAddressPubKey(pubKeyBytes, convert.ParamsToBtc(chainParams.Name))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -407,7 +407,7 @@ func (ctx *testContext) addSignedTx(inputs []spendableOutput,
 		ctx.harness.chain.SetMedianTimePast(time.Now())
 	} else {
 		acceptedTxns, err := ctx.harness.txPool.ProcessTransaction(
-			tx, true, false, 0,
+			tx, true, false, Tag(0),
 		)
 		if err != nil {
 			ctx.t.Fatalf("unable to process transaction: %v", err)
@@ -430,7 +430,7 @@ func (ctx *testContext) addSignedTx(inputs []spendableOutput,
 func testPoolMembership(tc *testContext, tx *btcutil.Tx, inOrphanPool, inTxPool bool) {
 	tc.t.Helper()
 
-	txHash := tx.Hash()
+	txHash := convert.HashToShell(tx.Hash())
 	gotOrphanPool := tc.harness.txPool.IsOrphanInPool(txHash)
 	if inOrphanPool != gotOrphanPool {
 		tc.t.Fatalf("IsOrphanInPool: want %v, got %v", inOrphanPool,
@@ -477,7 +477,7 @@ func TestSimpleOrphanChain(t *testing.T) {
 	// none are evicted).
 	for _, tx := range chainedTxns[1 : maxOrphans+1] {
 		acceptedTxns, err := harness.txPool.ProcessTransaction(tx, true,
-			false, 0)
+			false, Tag(0))
 		if err != nil {
 			t.Fatalf("ProcessTransaction: failed to accept valid "+
 				"orphan %v", err)
@@ -500,7 +500,7 @@ func TestSimpleOrphanChain(t *testing.T) {
 	// to ensure it has no bearing on whether or not already existing
 	// orphans in the pool are linked.
 	acceptedTxns, err := harness.txPool.ProcessTransaction(chainedTxns[0],
-		false, false, 0)
+		false, false, Tag(0))
 	if err != nil {
 		t.Fatalf("ProcessTransaction: failed to accept valid "+
 			"orphan %v", err)
@@ -539,7 +539,7 @@ func TestOrphanReject(t *testing.T) {
 	// Ensure orphans are rejected when the allow orphans flag is not set.
 	for _, tx := range chainedTxns[1:] {
 		acceptedTxns, err := harness.txPool.ProcessTransaction(tx, false,
-			false, 0)
+			false, Tag(0))
 		if err == nil {
 			t.Fatalf("ProcessTransaction: did not fail on orphan "+
 				"%v when allow orphans flag is false", convert.HashToShell(tx.Hash()))
@@ -596,7 +596,7 @@ func TestOrphanEviction(t *testing.T) {
 	// all accepted.  This will cause an eviction.
 	for _, tx := range chainedTxns[1:] {
 		acceptedTxns, err := harness.txPool.ProcessTransaction(tx, true,
-			false, 0)
+			false, Tag(0))
 		if err != nil {
 			t.Fatalf("ProcessTransaction: failed to accept valid "+
 				"orphan %v", err)
@@ -660,7 +660,7 @@ func TestBasicOrphanRemoval(t *testing.T) {
 	// none are evicted).
 	for _, tx := range chainedTxns[1 : maxOrphans+1] {
 		acceptedTxns, err := harness.txPool.ProcessTransaction(tx, true,
-			false, 0)
+			false, Tag(0))
 		if err != nil {
 			t.Fatalf("ProcessTransaction: failed to accept valid "+
 				"orphan %v", err)
@@ -735,7 +735,7 @@ func TestOrphanChainRemoval(t *testing.T) {
 	// none are evicted).
 	for _, tx := range chainedTxns[1 : maxOrphans+1] {
 		acceptedTxns, err := harness.txPool.ProcessTransaction(tx, true,
-			false, 0)
+			false, Tag(0))
 		if err != nil {
 			t.Fatalf("ProcessTransaction: failed to accept valid "+
 				"orphan %v", err)
@@ -798,7 +798,7 @@ func TestMultiInputOrphanDoubleSpend(t *testing.T) {
 	// except the final one.
 	for _, tx := range chainedTxns[1:maxOrphans] {
 		acceptedTxns, err := harness.txPool.ProcessTransaction(tx, true,
-			false, 0)
+			false, Tag(0))
 		if err != nil {
 			t.Fatalf("ProcessTransaction: failed to accept valid "+
 				"orphan %v", err)
@@ -824,7 +824,7 @@ func TestMultiInputOrphanDoubleSpend(t *testing.T) {
 		t.Fatalf("unable to create signed tx: %v", err)
 	}
 	acceptedTxns, err := harness.txPool.ProcessTransaction(doubleSpendTx,
-		true, false, 0)
+		true, false, Tag(0))
 	if err != nil {
 		t.Fatalf("ProcessTransaction: failed to accept valid orphan %v",
 			err)
@@ -843,7 +843,7 @@ func TestMultiInputOrphanDoubleSpend(t *testing.T) {
 	// This will cause the shared output to become a concrete spend which
 	// will in turn must cause the double spending orphan to be removed.
 	acceptedTxns, err = harness.txPool.ProcessTransaction(chainedTxns[0],
-		false, false, 0)
+		false, false, Tag(0))
 	if err != nil {
 		t.Fatalf("ProcessTransaction: failed to accept valid tx %v", err)
 	}
@@ -891,7 +891,7 @@ func TestCheckSpend(t *testing.T) {
 	}
 	for _, tx := range chainedTxns {
 		_, err := harness.txPool.ProcessTransaction(tx, true,
-			false, 0)
+			false, Tag(0))
 		if err != nil {
 			t.Fatalf("ProcessTransaction: failed to accept "+
 				"tx: %v", err)
@@ -910,7 +910,7 @@ func TestCheckSpend(t *testing.T) {
 	// Now all but the last tx should be spent by the next.
 	for i := 0; i < len(chainedTxns)-1; i++ {
 		op = wire.OutPoint{
-			Hash:  *chainedTxns[i].Hash(),
+			Hash:  *convert.HashToShell(chainedTxns[i].Hash()),
 			Index: 0,
 		}
 		expSpend := chainedTxns[i+1]
@@ -923,7 +923,7 @@ func TestCheckSpend(t *testing.T) {
 
 	// The last tx should have no spend.
 	op = wire.OutPoint{
-		Hash:  *chainedTxns[txChainLength-1].Hash(),
+		Hash:  *convert.HashToShell(chainedTxns[txChainLength-1].Hash()),
 		Index: 0,
 	}
 	spend = harness.txPool.CheckSpend(op)
@@ -1419,8 +1419,8 @@ func TestAncestorsDescendants(t *testing.T) {
 	// We'll be querying for the ancestors of E. We should expect to see all
 	// of the transactions that it depends on.
 	expectedAncestors := map[chainhash.Hash]struct{}{
-		*a.Hash(): {}, *b.Hash(): {},
-		*c.Hash(): {}, *d.Hash(): {},
+		*convert.HashToShell(a.Hash()): {}, *convert.HashToShell(b.Hash()): {},
+		*convert.HashToShell(c.Hash()): {}, *convert.HashToShell(d.Hash()): {},
 	}
 	ancestors := ctx.harness.txPool.txAncestors(e, nil)
 	if len(ancestors) != len(expectedAncestors) {
@@ -1437,8 +1437,8 @@ func TestAncestorsDescendants(t *testing.T) {
 	// Then, we'll query for the descendants of A. We should expect to see
 	// all of the transactions that depend on it.
 	expectedDescendants := map[chainhash.Hash]struct{}{
-		*b.Hash(): {}, *c.Hash(): {},
-		*d.Hash(): {}, *e.Hash(): {},
+		*convert.HashToShell(b.Hash()): {}, *convert.HashToShell(c.Hash()): {},
+		*convert.HashToShell(d.Hash()): {}, *convert.HashToShell(e.Hash()): {},
 	}
 	descendants := ctx.harness.txPool.txDescendants(a, nil)
 	if len(descendants) != len(expectedDescendants) {
@@ -1818,7 +1818,7 @@ func TestRBF(t *testing.T) {
 			// it's not a valid one, we should see the error
 			// expected by the test.
 			_, err = ctx.harness.txPool.ProcessTransaction(
-				replacementTx, false, false, 0,
+				replacementTx, false, false, Tag(0),
 			)
 			if testCase.err == "" && err != nil {
 				ctx.t.Fatalf("expected no error when "+

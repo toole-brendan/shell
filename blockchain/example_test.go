@@ -14,6 +14,7 @@ import (
 	"github.com/toole-brendan/shell/chaincfg"
 	"github.com/toole-brendan/shell/database"
 	_ "github.com/toole-brendan/shell/database/ffldb"
+	"github.com/toole-brendan/shell/internal/convert"
 )
 
 // This example demonstrates how to create a new chain instance and use

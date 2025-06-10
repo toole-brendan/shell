@@ -26,22 +26,22 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/btcsuite/btcd/btcec/v2/ecdsa"
+	"github.com/btcsuite/btcd/btcutil"
+	"github.com/btcsuite/websocket"
 	"github.com/toole-brendan/shell/blockchain"
 	"github.com/toole-brendan/shell/blockchain/indexers"
-	"github.com/btcsuite/btcd/btcec/v2/ecdsa"
 	"github.com/toole-brendan/shell/btcjson"
-	"github.com/btcsuite/btcd/btcutil"
 	"github.com/toole-brendan/shell/chaincfg"
 	"github.com/toole-brendan/shell/chaincfg/chainhash"
 	"github.com/toole-brendan/shell/database"
+	"github.com/toole-brendan/shell/internal/convert"
 	"github.com/toole-brendan/shell/mempool"
 	"github.com/toole-brendan/shell/mining"
 	"github.com/toole-brendan/shell/mining/cpuminer"
 	"github.com/toole-brendan/shell/peer"
 	"github.com/toole-brendan/shell/txscript"
 	"github.com/toole-brendan/shell/wire"
-	"github.com/btcsuite/websocket"
-	"github.com/toole-brendan/shell/internal/convert"
 )
 
 // API version constants
@@ -840,7 +840,7 @@ func handleDecodeScript(s *rpcServer, cmd interface{}, closeChan <-chan struct{}
 	}
 
 	// Convert the script itself to a pay-to-script-hash address.
-	p2sh, err := btcutil.NewAddressScriptHash(script, convert.ParamsToBtc(s.cfg.ChainParams))
+	p2sh, err := btcutil.NewAddressScriptHash(script, convert.ParamsToBtc(s.cfg.ChainParams.Name))
 	if err != nil {
 		context := "Failed to convert script to pay-to-script-hash"
 		return nil, internalRPCError(err.Error(), context)
