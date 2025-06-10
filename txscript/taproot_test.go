@@ -16,9 +16,10 @@ import (
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/btcutil/hdkeychain"
-	"github.com/toole-brendan/shell/chaincfg"
 	secp "github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/stretchr/testify/require"
+	"github.com/toole-brendan/shell/chaincfg"
+	"github.com/toole-brendan/shell/internal/convert"
 )
 
 var (
@@ -257,7 +258,7 @@ func TestTaprootConstructKeyPath(t *testing.T) {
 
 			addr, err := btcutil.NewAddressTaproot(
 				schnorr.SerializePubKey(tapKey),
-				&chaincfg.MainNetParams,
+				convert.ParamsToBtc(chaincfg.MainNetParams.Name),
 			)
 			require.NoError(t, err)
 

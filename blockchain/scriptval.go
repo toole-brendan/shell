@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"github.com/btcsuite/btcd/btcutil"
+	"github.com/toole-brendan/shell/internal/convert"
 	"github.com/toole-brendan/shell/txscript"
 	"github.com/toole-brendan/shell/wire"
-	"github.com/toole-brendan/shell/internal/convert"
 )
 
 // txValidateItem holds a transaction along with which input to validate.
@@ -58,7 +58,7 @@ out:
 		case txVI := <-v.validateChan:
 			// Ensure the referenced input utxo is available.
 			txIn := txVI.txIn
-			utxo := v.utxoView.LookupEntry(convert.OutPointToShell(&txIn.PreviousOutPoint))
+			utxo := v.utxoView.LookupEntry(txIn.PreviousOutPoint)
 			if utxo == nil {
 				str := fmt.Sprintf("unable to find unspent "+
 					"output %v referenced from "+
@@ -76,7 +76,7 @@ out:
 			pkScript := utxo.PkScript()
 			inputAmount := utxo.Amount()
 			vm, err := txscript.NewEngine(
-				pkScript, txVI.tx.MsgTx(), txVI.txInIndex,
+				pkScript, convert.ToShellMsgTx(txVI.tx.MsgTx()), txVI.txInIndex,
 				v.flags, v.sigCache, txVI.sigHashes,
 				inputAmount, v.utxoView,
 			)
@@ -204,7 +204,7 @@ func ValidateTransactionScripts(tx *btcutil.Tx, utxoView *UtxoViewpoint,
 	// amongst all worker validation goroutines.
 	if segwitActive && tx.MsgTx().HasWitness() &&
 		!hashCache.ContainsHashes(convert.HashToShell(tx.Hash())) {
-		hashCache.AddSigHashes(tx.MsgTx(), utxoView)
+		hashCache.AddSigHashes(convert.ToShellMsgTx(tx.MsgTx()), utxoView)
 	}
 
 	var cachedHashes *txscript.TxSigHashes
@@ -229,7 +229,7 @@ func ValidateTransactionScripts(tx *btcutil.Tx, utxoView *UtxoViewpoint,
 
 		txVI := &txValidateItem{
 			txInIndex: txInIdx,
-			txIn:      txIn,
+			txIn:      convert.ToShellTxIn(txIn),
 			tx:        tx,
 			sigHashes: cachedHashes,
 		}
@@ -267,18 +267,18 @@ func checkBlockScripts(block *btcutil.Block, utxoView *UtxoViewpoint,
 		// advantage of the potential speed savings due to the new
 		// digest algorithm (BIP0143).
 		if segwitActive && tx.HasWitness() && hashCache != nil &&
-			!hashCache.ContainsHashes(hash) {
+			!hashCache.ContainsHashes(convert.HashToShell(hash)) {
 
-			hashCache.AddSigHashes(tx.MsgTx(), utxoView)
+			hashCache.AddSigHashes(convert.ToShellMsgTx(tx.MsgTx()), utxoView)
 		}
 
 		var cachedHashes *txscript.TxSigHashes
 		if segwitActive && tx.HasWitness() {
 			if hashCache != nil {
-				cachedHashes, _ = hashCache.GetSigHashes(hash)
+				cachedHashes, _ = hashCache.GetSigHashes(convert.HashToShell(hash))
 			} else {
 				cachedHashes = txscript.NewTxSigHashes(
-					tx.MsgTx(), utxoView,
+					convert.ToShellMsgTx(tx.MsgTx()), utxoView,
 				)
 			}
 		}
@@ -291,7 +291,7 @@ func checkBlockScripts(block *btcutil.Block, utxoView *UtxoViewpoint,
 
 			txVI := &txValidateItem{
 				txInIndex: txInIdx,
-				txIn:      txIn,
+				txIn:      convert.ToShellTxIn(txIn),
 				tx:        tx,
 				sigHashes: cachedHashes,
 			}

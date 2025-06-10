@@ -7,15 +7,15 @@ package indexers
 import (
 	"errors"
 
-	"github.com/toole-brendan/shell/blockchain"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/btcutil/gcs"
 	"github.com/btcsuite/btcd/btcutil/gcs/builder"
+	"github.com/toole-brendan/shell/blockchain"
 	"github.com/toole-brendan/shell/chaincfg"
 	"github.com/toole-brendan/shell/chaincfg/chainhash"
 	"github.com/toole-brendan/shell/database"
-	"github.com/toole-brendan/shell/wire"
 	"github.com/toole-brendan/shell/internal/convert"
+	"github.com/toole-brendan/shell/wire"
 )
 
 const (
@@ -167,7 +167,7 @@ func storeFilter(dbTx database.Tx, block *btcutil.Block, f *gcs.Filter,
 	if err != nil {
 		return err
 	}
-	err = dbStoreFilterIdxEntry(dbTx, fkey, h, filterBytes)
+	err = dbStoreFilterIdxEntry(dbTx, fkey, convert.HashToShell(h), filterBytes)
 	if err != nil {
 		return err
 	}
@@ -177,7 +177,7 @@ func storeFilter(dbTx database.Tx, block *btcutil.Block, f *gcs.Filter,
 	if err != nil {
 		return err
 	}
-	err = dbStoreFilterIdxEntry(dbTx, hashkey, h, filterHash[:])
+	err = dbStoreFilterIdxEntry(dbTx, hashkey, convert.HashToShell(h), filterHash[:])
 	if err != nil {
 		return err
 	}
@@ -185,10 +185,10 @@ func storeFilter(dbTx database.Tx, block *btcutil.Block, f *gcs.Filter,
 	// Then fetch the previous block's filter header.
 	var prevHeader *chainhash.Hash
 	ph := &block.MsgBlock().Header.PrevBlock
-	if ph.IsEqual(&zeroHash) {
+	if convert.HashToShell(ph).IsEqual(&zeroHash) {
 		prevHeader = &zeroHash
 	} else {
-		pfh, err := dbFetchFilterIdxEntry(dbTx, hkey, ph)
+		pfh, err := dbFetchFilterIdxEntry(dbTx, hkey, convert.HashToShell(ph))
 		if err != nil {
 			return err
 		}
@@ -200,11 +200,12 @@ func storeFilter(dbTx database.Tx, block *btcutil.Block, f *gcs.Filter,
 		}
 	}
 
-	fh, err := builder.MakeHeaderForFilter(f, *prevHeader)
+	btcdPrevHeader := convert.HashToBtcd(prevHeader)
+	fh, err := builder.MakeHeaderForFilter(f, *btcdPrevHeader)
 	if err != nil {
 		return err
 	}
-	return dbStoreFilterIdxEntry(dbTx, hkey, h, fh[:])
+	return dbStoreFilterIdxEntry(dbTx, hkey, convert.HashToShell(h), fh[:])
 }
 
 // ConnectBlock is invoked by the index manager when a new block has been

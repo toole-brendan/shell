@@ -5,9 +5,6 @@
 package blockchain
 
 import (
-	"github.com/toole-brendan/shell/internal/convert"
-)
-import (
 	"container/list"
 	"fmt"
 	"sync"
@@ -16,6 +13,7 @@ import (
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/toole-brendan/shell/chaincfg/chainhash"
 	"github.com/toole-brendan/shell/database"
+	"github.com/toole-brendan/shell/internal/convert"
 	"github.com/toole-brendan/shell/txscript"
 	"github.com/toole-brendan/shell/wire"
 )
@@ -380,7 +378,7 @@ func (s *utxoCache) addTxOuts(tx *btcutil.Tx, blockHeight int32) error {
 	// Loop all of the transaction outputs and add those which are not
 	// provably unspendable.
 	isCoinBase := IsCoinBase(tx)
-	prevOut := wire.OutPoint{Hash: *convert.HashToShell(tx.Hash()),}
+	prevOut := wire.OutPoint{Hash: *convert.HashToShell(tx.Hash())}
 	for txOutIdx, txOut := range tx.MsgTx().TxOut {
 		// Update existing entries.  All fields are updated because it's
 		// possible (although extremely unlikely) that the existing
@@ -388,7 +386,7 @@ func (s *utxoCache) addTxOuts(tx *btcutil.Tx, blockHeight int32) error {
 		// same hash.  This is allowed so long as the previous
 		// transaction is fully spent.
 		prevOut.Index = uint32(txOutIdx)
-		err := s.addTxOut(prevOut, txOut, isCoinBase, blockHeight)
+		err := s.addTxOut(prevOut, convert.ToShellTxOut(txOut), isCoinBase, blockHeight)
 		if err != nil {
 			return err
 		}
@@ -459,7 +457,7 @@ func (s *utxoCache) addTxIns(tx *btcutil.Tx, stxos *[]SpentTxOut) error {
 	}
 
 	for _, txIn := range tx.MsgTx().TxIn {
-		err := s.addTxIn(txIn, stxos)
+		err := s.addTxIn(convert.ToShellTxIn(txIn), stxos)
 		if err != nil {
 			return err
 		}
@@ -636,7 +634,7 @@ func (b *BlockChain) InitConsistentState(tip *blockNode, interrupt <-chan struct
 	}
 
 	// If state is consistent, we are done.
-	if statusHash.IsEqual(convert.HashToBtc(&tip.hash)) {
+	if statusHash.IsEqual(&tip.hash) {
 		log.Debugf("UTXO state consistent at (%d:%v)", tip.height, tip.hash)
 
 		// The last flush hash is set to the default value of all 0s. Set

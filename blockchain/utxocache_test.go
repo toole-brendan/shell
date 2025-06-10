@@ -18,8 +18,8 @@ import (
 	"github.com/toole-brendan/shell/chaincfg/chainhash"
 	"github.com/toole-brendan/shell/database"
 	"github.com/toole-brendan/shell/database/ffldb"
-	"github.com/toole-brendan/shell/wire"
 	"github.com/toole-brendan/shell/internal/convert"
+	"github.com/toole-brendan/shell/wire"
 )
 
 func TestMapSlice(t *testing.T) {
@@ -752,9 +752,9 @@ func TestFlushOnPrune(t *testing.T) {
 	syncBlocks := func() {
 		// Modify block 1 to be a different hash.  This is to artificially
 		// create a stale branch in the chain.
-		staleMsgBlock := blocks[1].MsgBlock().Copy()
+		staleMsgBlock := *blocks[1].MsgBlock()
 		staleMsgBlock.Header.Nonce = 0
-		staleBlock := convert.NewShellBlock(staleMsgBlock)
+		staleBlock := convert.NewShellBlock(convert.ToShellMsgBlock(&staleMsgBlock))
 
 		// Add the stale block here to create a chain view like so. The
 		// block will be the main chain at first but become stale as we
@@ -795,7 +795,7 @@ func TestFlushOnPrune(t *testing.T) {
 			return fmt.Errorf("didn't find block %v. %v", blockHash, err)
 		}
 
-		if !block.Hash().IsEqual(blockHash) {
+		if !convert.HashToShell(block.Hash()).IsEqual(blockHash) {
 			return fmt.Errorf("expected to find block %v but got %v",
 				blockHash, convert.HashToShell(block.Hash()))
 		}
@@ -824,7 +824,7 @@ func TestFlushOnPrune(t *testing.T) {
 			// Blocks up to the last flush hash should not exist.
 			// The utxocache is big enough so that it shouldn't flush
 			// on it being full.  It should only flush on prunes.
-			if block.Hash().IsEqual(&chain.utxoCache.lastFlushHash) {
+			if convert.HashToShell(block.Hash()).IsEqual(&chain.utxoCache.lastFlushHash) {
 				exist = true
 			}
 
@@ -928,7 +928,7 @@ func TestInitConsistentState(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !statusHash.IsEqual(blocks[cacheFlushHeight].Hash()) {
+	if !statusHash.IsEqual(convert.HashToShell(blocks[cacheFlushHeight].Hash())) {
 		t.Fatalf("expected the utxocache to be flushed at "+
 			"block hash %s but got %s",
 			blocks[cacheFlushHeight].Hash(), statusHash)

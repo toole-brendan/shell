@@ -5,6 +5,7 @@ import (
 
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/toole-brendan/shell/chaincfg/chainhash"
+	"github.com/toole-brendan/shell/internal/convert"
 )
 
 // rollingMerkleTreeStore calculates the merkle root by only allocating O(logN)
@@ -70,9 +71,9 @@ func (s *rollingMerkleTreeStore) calcMerkleRoot(adds []*btcutil.Tx, witness bool
 			var zeroHash chainhash.Hash
 			s.add(zeroHash)
 		case witness:
-			s.add(*adds[i].WitnessHash())
+			s.add(convert.HashToShellValue(*adds[i].WitnessHash()))
 		default:
-			s.add(*adds[i].Hash())
+			s.add(*convert.HashToShell(adds[i].Hash()))
 		}
 	}
 
@@ -85,9 +86,9 @@ func (s *rollingMerkleTreeStore) calcMerkleRoot(adds []*btcutil.Tx, witness bool
 	if len(adds) > 0 && len(adds)%2 != 0 {
 		switch {
 		case witness:
-			s.add(*adds[len(adds)-1].WitnessHash())
+			s.add(convert.HashToShellValue(*adds[len(adds)-1].WitnessHash()))
 		default:
-			s.add(*adds[len(adds)-1].Hash())
+			s.add(*convert.HashToShell(adds[len(adds)-1].Hash()))
 		}
 	}
 

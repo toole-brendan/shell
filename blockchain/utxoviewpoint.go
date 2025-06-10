@@ -245,7 +245,7 @@ func (view *UtxoViewpoint) AddTxOut(tx *btcutil.Tx, txOutIdx uint32, blockHeight
 	// is allowed so long as the previous transaction is fully spent.
 	prevOut := wire.OutPoint{Hash: *convert.HashToShell(tx.Hash()), Index: txOutIdx}
 	txOut := tx.MsgTx().TxOut[txOutIdx]
-	view.addTxOut(prevOut, txOut, IsCoinBase(tx), blockHeight)
+	view.addTxOut(prevOut, convert.ToShellTxOut(txOut), IsCoinBase(tx), blockHeight)
 }
 
 // AddTxOuts adds all outputs in the passed transaction which are not provably
@@ -264,7 +264,7 @@ func (view *UtxoViewpoint) AddTxOuts(tx *btcutil.Tx, blockHeight int32) {
 		// same hash.  This is allowed so long as the previous
 		// transaction is fully spent.
 		prevOut.Index = uint32(txOutIdx)
-		view.addTxOut(prevOut, txOut, isCoinBase, blockHeight)
+		view.addTxOut(prevOut, convert.ToShellTxOut(txOut), isCoinBase, blockHeight)
 	}
 }
 
@@ -287,7 +287,7 @@ func (view *UtxoViewpoint) connectTransaction(tx *btcutil.Tx, blockHeight int32,
 	for _, txIn := range tx.MsgTx().TxIn {
 		// Ensure the referenced utxo exists in the view.  This should
 		// never happen unless there is a bug is introduced in the code.
-		entry := view.entries[convert.OutPointToShell(&txIn.PreviousOutPoint)]
+		entry := view.entries[convert.OutPointToShell(txIn.PreviousOutPoint)]
 		if entry == nil {
 			return AssertError(fmt.Sprintf("view missing input %v",
 				txIn.PreviousOutPoint))
@@ -399,7 +399,7 @@ func (view *UtxoViewpoint) disconnectTransactions(db database.DB, block *btcutil
 		// the code relies on its existence in the view in order to
 		// signal modifications have happened.
 		txHash := tx.Hash()
-		prevOut := wire.OutPoint{Hash: *txHash}
+		prevOut := wire.OutPoint{Hash: *convert.HashToShell(txHash)}
 		for txOutIdx, txOut := range tx.MsgTx().TxOut {
 			if txscript.IsUnspendable(txOut.PkScript) {
 				continue
@@ -438,10 +438,10 @@ func (view *UtxoViewpoint) disconnectTransactions(db database.DB, block *btcutil
 			// output in the view, it means it was previously spent,
 			// so create a new utxo entry in order to resurrect it.
 			originOut := &tx.MsgTx().TxIn[txInIdx].PreviousOutPoint
-			entry := view.entries[*originOut]
+			entry := view.entries[convert.OutPointToShell(*originOut)]
 			if entry == nil {
 				entry = new(UtxoEntry)
-				view.entries[*originOut] = entry
+				view.entries[convert.OutPointToShell(*originOut)] = entry
 			}
 
 			// The legacy v1 spend journal format only stored the
@@ -463,7 +463,7 @@ func (view *UtxoViewpoint) disconnectTransactions(db database.DB, block *btcutil
 			// only ever run with the new v2 format, this code path
 			// will never run.
 			if stxo.Height == 0 {
-				utxo, err := view.fetchEntryByHash(db, txHash)
+				utxo, err := view.fetchEntryByHash(db, convert.HashToShell(txHash))
 				if err != nil {
 					return err
 				}
@@ -491,7 +491,7 @@ func (view *UtxoViewpoint) disconnectTransactions(db database.DB, block *btcutil
 
 	// Update the best hash for view to the previous block since all of the
 	// transactions for the current block have been disconnected.
-	view.SetBestHash(&block.MsgBlock().Header.PrevBlock)
+	view.SetBestHash(convert.HashToShell(&block.MsgBlock().Header.PrevBlock))
 	return nil
 }
 
@@ -609,7 +609,7 @@ func (view *UtxoViewpoint) findInputsToFetch(block *btcutil.Block) []wire.OutPoi
 			// than the actual position of the transaction within
 			// the block due to skipping the coinbase.
 			originHash := &txIn.PreviousOutPoint.Hash
-			if inFlightIndex, ok := txInFlight[*originHash]; ok &&
+			if inFlightIndex, ok := txInFlight[*convert.HashToShell(originHash)]; ok &&
 				i >= inFlightIndex {
 
 				originTx := transactions[inFlightIndex]
@@ -619,11 +619,11 @@ func (view *UtxoViewpoint) findInputsToFetch(block *btcutil.Block) []wire.OutPoi
 
 			// Don't request entries that are already in the view
 			// from the database.
-			if _, ok := view.entries[convert.OutPointToShell(&txIn.PreviousOutPoint)]; ok {
+			if _, ok := view.entries[convert.OutPointToShell(txIn.PreviousOutPoint)]; ok {
 				continue
 			}
 
-			needed = append(needed, txIn.PreviousOutPoint)
+			needed = append(needed, convert.OutPointToShell(txIn.PreviousOutPoint))
 		}
 	}
 
@@ -668,7 +668,7 @@ func (b *BlockChain) FetchUtxoView(tx *btcutil.Tx) (*UtxoViewpoint, error) {
 	}
 	if !IsCoinBase(tx) {
 		for _, txIn := range tx.MsgTx().TxIn {
-			needed = append(needed, txIn.PreviousOutPoint)
+			needed = append(needed, convert.OutPointToShell(txIn.PreviousOutPoint))
 		}
 	}
 
@@ -701,12 +701,4 @@ func (b *BlockChain) FetchUtxoEntry(outpoint wire.OutPoint) (*UtxoEntry, error) 
 	}
 
 	return entries[0], nil
-}
-
-// AddTxOuts adds all outputs from a transaction to the view
-func (view *UtxoViewpoint) AddTxOuts(tx *btcutil.Tx, blockHeight int32) {
-	// Add all transaction outputs
-	for txOutIdx := range tx.MsgTx().TxOut {
-		view.AddTxOut(tx, uint32(txOutIdx), blockHeight)
-	}
 }

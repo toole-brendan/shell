@@ -8,12 +8,12 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/toole-brendan/shell/blockchain"
 	"github.com/btcsuite/btcd/btcutil"
+	"github.com/toole-brendan/shell/blockchain"
 	"github.com/toole-brendan/shell/chaincfg/chainhash"
 	"github.com/toole-brendan/shell/database"
-	"github.com/toole-brendan/shell/wire"
 	"github.com/toole-brendan/shell/internal/convert"
+	"github.com/toole-brendan/shell/wire"
 )
 
 var (
@@ -79,7 +79,7 @@ func dbIndexConnectBlock(dbTx database.Tx, indexer Indexer, block *btcutil.Block
 	if err != nil {
 		return err
 	}
-	if !curTipHash.IsEqual(&block.MsgBlock().Header.PrevBlock) {
+	if !curTipHash.IsEqual(convert.HashToShell(&block.MsgBlock().Header.PrevBlock)) {
 		return AssertError(fmt.Sprintf("dbIndexConnectBlock must be "+
 			"called with a block that extends the current index "+
 			"tip (%s, tip %s, block %s)", indexer.Name(),
@@ -92,7 +92,7 @@ func dbIndexConnectBlock(dbTx database.Tx, indexer Indexer, block *btcutil.Block
 	}
 
 	// Update the current index tip.
-	return dbPutIndexerTip(dbTx, idxKey, block.Hash(), block.Height())
+	return dbPutIndexerTip(dbTx, idxKey, convert.HashToShell(block.Hash()), block.Height())
 }
 
 // dbIndexDisconnectBlock removes all of the index entries associated with the
@@ -124,7 +124,7 @@ func dbIndexDisconnectBlock(dbTx database.Tx, indexer Indexer, block *btcutil.Bl
 
 	// Update the current index tip.
 	prevHash := &block.MsgBlock().Header.PrevBlock
-	return dbPutIndexerTip(dbTx, idxKey, prevHash, block.Height()-1)
+	return dbPutIndexerTip(dbTx, idxKey, convert.HashToShell(prevHash), block.Height()-1)
 }
 
 // Manager defines an index manager that manages multiple optional indexes and
@@ -341,7 +341,7 @@ func (m *Manager) Init(chain *blockchain.BlockChain, interrupt <-chan struct{}) 
 				}
 
 				// Update the tip to the previous block.
-				hash = &block.MsgBlock().Header.PrevBlock
+				hash = convert.HashToShell(&block.MsgBlock().Header.PrevBlock)
 				height--
 
 				return nil

@@ -12,7 +12,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/btcsuite/btcd/btcutil"
 	"github.com/toole-brendan/shell/chaincfg"
 	"github.com/toole-brendan/shell/chaincfg/chainhash"
 	"github.com/toole-brendan/shell/database"
@@ -338,7 +337,7 @@ func TestPrune(t *testing.T) {
 		// code snippet below.  This let's us test that block files are
 		// properly closed before attempting to delete them.
 		err = db.View(func(tx database.Tx) error {
-			_, err := tx.FetchBlock(blocks[0].Hash())
+			_, err := tx.FetchBlock(convert.HashToShell(blocks[0].Hash()))
 			if err != nil {
 				return err
 			}

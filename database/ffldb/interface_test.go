@@ -29,8 +29,8 @@ import (
 	"github.com/toole-brendan/shell/chaincfg"
 	"github.com/toole-brendan/shell/chaincfg/chainhash"
 	"github.com/toole-brendan/shell/database"
-	"github.com/toole-brendan/shell/wire"
 	"github.com/toole-brendan/shell/internal/convert"
+	"github.com/toole-brendan/shell/wire"
 )
 
 var (
@@ -1122,7 +1122,7 @@ func testFetchBlockIOMissing(tc *testContext, tx database.Tx) bool {
 	allBlockRegions := make([]database.BlockRegion, len(tc.blocks))
 	for i, block := range tc.blocks {
 		blockHash := block.Hash()
-		allBlockHashes[i] = *blockHash
+		allBlockHashes[i] = *convert.HashToShell(blockHash)
 
 		txLocs, err := block.TxLoc()
 		if err != nil {
@@ -1133,7 +1133,7 @@ func testFetchBlockIOMissing(tc *testContext, tx database.Tx) bool {
 
 		// Ensure FetchBlock returns expected error.
 		testName := fmt.Sprintf("FetchBlock #%d on missing block", i)
-		_, err = tx.FetchBlock(blockHash)
+		_, err = tx.FetchBlock(convert.HashToShell(blockHash))
 		if !checkDbError(tc.t, testName, err, wantErrCode) {
 			return false
 		}
@@ -1141,7 +1141,7 @@ func testFetchBlockIOMissing(tc *testContext, tx database.Tx) bool {
 		// Ensure FetchBlockHeader returns expected error.
 		testName = fmt.Sprintf("FetchBlockHeader #%d on missing block",
 			i)
-		_, err = tx.FetchBlockHeader(blockHash)
+		_, err = tx.FetchBlockHeader(convert.HashToShell(blockHash))
 		if !checkDbError(tc.t, testName, err, wantErrCode) {
 			return false
 		}
@@ -1149,7 +1149,7 @@ func testFetchBlockIOMissing(tc *testContext, tx database.Tx) bool {
 		// Ensure the first transaction fetched as a block region from
 		// the database returns the expected error.
 		region := database.BlockRegion{
-			Hash:   blockHash,
+			Hash:   convert.HashToShell(blockHash),
 			Offset: uint32(txLocs[0].TxStart),
 			Len:    uint32(txLocs[0].TxLen),
 		}
@@ -1160,7 +1160,7 @@ func testFetchBlockIOMissing(tc *testContext, tx database.Tx) bool {
 		}
 
 		// Ensure HasBlock returns false.
-		hasBlock, err := tx.HasBlock(blockHash)
+		hasBlock, err := tx.HasBlock(convert.HashToShell(blockHash))
 		if err != nil {
 			tc.t.Errorf("HasBlock #%d: unexpected err: %v", i, err)
 			return false
@@ -1229,7 +1229,7 @@ func testFetchBlockIO(tc *testContext, tx database.Tx) bool {
 	allBlockRegions := make([]database.BlockRegion, len(tc.blocks))
 	for i, block := range tc.blocks {
 		blockHash := block.Hash()
-		allBlockHashes[i] = *blockHash
+		allBlockHashes[i] = *convert.HashToShell(blockHash)
 
 		blockBytes, err := block.Bytes()
 		if err != nil {
@@ -1245,11 +1245,11 @@ func testFetchBlockIO(tc *testContext, tx database.Tx) bool {
 				err)
 			return false
 		}
-		allBlockTxLocs[i] = txLocs
+		allBlockTxLocs[i] = convert.TxLocsToShell(txLocs)
 
 		// Ensure the block data fetched from the database matches the
 		// expected bytes.
-		gotBlockBytes, err := tx.FetchBlock(blockHash)
+		gotBlockBytes, err := tx.FetchBlock(convert.HashToShell(blockHash))
 		if err != nil {
 			tc.t.Errorf("FetchBlock(%s): unexpected error: %v",
 				blockHash, err)
@@ -1264,7 +1264,7 @@ func testFetchBlockIO(tc *testContext, tx database.Tx) bool {
 		// Ensure the block header fetched from the database matches the
 		// expected bytes.
 		wantHeaderBytes := blockBytes[0:wire.MaxBlockHeaderPayload]
-		gotHeaderBytes, err := tx.FetchBlockHeader(blockHash)
+		gotHeaderBytes, err := tx.FetchBlockHeader(convert.HashToShell(blockHash))
 		if err != nil {
 			tc.t.Errorf("FetchBlockHeader(%s): unexpected error: %v",
 				blockHash, err)
@@ -1280,12 +1280,13 @@ func testFetchBlockIO(tc *testContext, tx database.Tx) bool {
 		// Ensure the first transaction fetched as a block region from
 		// the database matches the expected bytes.
 		region := database.BlockRegion{
-			Hash:   blockHash,
+			Hash:   convert.HashToShell(blockHash),
 			Offset: uint32(txLocs[0].TxStart),
 			Len:    uint32(txLocs[0].TxLen),
 		}
 		allBlockRegions[i] = region
 		endRegionOffset := region.Offset + region.Len
+
 		wantRegionBytes := blockBytes[region.Offset:endRegionOffset]
 		gotRegionBytes, err := tx.FetchBlockRegion(&region)
 		if err != nil {
@@ -1301,7 +1302,7 @@ func testFetchBlockIO(tc *testContext, tx database.Tx) bool {
 		}
 
 		// Ensure block hash exists as expected.
-		hasBlock, err := tx.HasBlock(blockHash)
+		hasBlock, err := tx.HasBlock(convert.HashToShell(blockHash))
 		if err != nil {
 			tc.t.Errorf("HasBlock(%s): unexpected error: %v",
 				blockHash, err)
@@ -1354,7 +1355,7 @@ func testFetchBlockIO(tc *testContext, tx database.Tx) bool {
 		testName = fmt.Sprintf("FetchBlockRegion(%s) invalid region",
 			blockHash)
 		wantErrCode = database.ErrBlockRegionInvalid
-		region.Hash = blockHash
+		region.Hash = convert.HashToShell(blockHash)
 		region.Offset = ^uint32(0)
 		_, err = tx.FetchBlockRegion(&region)
 		if !checkDbError(tc.t, testName, err, wantErrCode) {
@@ -1840,7 +1841,7 @@ func testClosedTxInterface(tc *testContext, tx database.Tx) bool {
 	allBlockRegions := make([]database.BlockRegion, len(tc.blocks))
 	for i, block := range tc.blocks {
 		blockHash := block.Hash()
-		allBlockHashes[i] = *blockHash
+		allBlockHashes[i] = *convert.HashToShell(blockHash)
 
 		txLocs, err := block.TxLoc()
 		if err != nil {
@@ -1858,14 +1859,14 @@ func testClosedTxInterface(tc *testContext, tx database.Tx) bool {
 
 		// Ensure FetchBlock returns expected error.
 		testName = fmt.Sprintf("FetchBlock #%d on closed tx", i)
-		_, err = tx.FetchBlock(blockHash)
+		_, err = tx.FetchBlock(convert.HashToShell(blockHash))
 		if !checkDbError(tc.t, testName, err, wantErrCode) {
 			return false
 		}
 
 		// Ensure FetchBlockHeader returns expected error.
 		testName = fmt.Sprintf("FetchBlockHeader #%d on closed tx", i)
-		_, err = tx.FetchBlockHeader(blockHash)
+		_, err = tx.FetchBlockHeader(convert.HashToShell(blockHash))
 		if !checkDbError(tc.t, testName, err, wantErrCode) {
 			return false
 		}
@@ -1873,7 +1874,7 @@ func testClosedTxInterface(tc *testContext, tx database.Tx) bool {
 		// Ensure the first transaction fetched as a block region from
 		// the database returns the expected error.
 		region := database.BlockRegion{
-			Hash:   blockHash,
+			Hash:   convert.HashToShell(blockHash),
 			Offset: uint32(txLocs[0].TxStart),
 			Len:    uint32(txLocs[0].TxLen),
 		}
@@ -1885,7 +1886,7 @@ func testClosedTxInterface(tc *testContext, tx database.Tx) bool {
 
 		// Ensure HasBlock returns expected error.
 		testName = fmt.Sprintf("HasBlock #%d on closed tx", i)
-		_, err = tx.HasBlock(blockHash)
+		_, err = tx.HasBlock(convert.HashToShell(blockHash))
 		if !checkDbError(tc.t, testName, err, wantErrCode) {
 			return false
 		}
@@ -2003,7 +2004,7 @@ func testConcurrecy(tc *testContext) bool {
 	// test failures on slower systems.
 	startTime := time.Now()
 	err := tc.db.View(func(tx database.Tx) error {
-		_, err := tx.FetchBlock(tc.blocks[0].Hash())
+		_, err := tx.FetchBlock(convert.HashToShell(tc.blocks[0].Hash()))
 		return err
 	})
 	if err != nil {
@@ -2025,7 +2026,7 @@ func testConcurrecy(tc *testContext) bool {
 	reader := func(blockNum int) {
 		err := tc.db.View(func(tx database.Tx) error {
 			time.Sleep(sleepTime)
-			_, err := tx.FetchBlock(tc.blocks[blockNum].Hash())
+			_, err := tx.FetchBlock(convert.HashToShell(tc.blocks[blockNum].Hash()))
 			return err
 		})
 		if err != nil {

@@ -9,7 +9,9 @@ import (
 	"math/rand"
 	"testing"
 
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/toole-brendan/shell/chaincfg/chainhash"
+	"github.com/toole-brendan/shell/internal/convert"
 	"github.com/toole-brendan/shell/mining"
 	"github.com/toole-brendan/shell/wire"
 )
@@ -47,11 +49,12 @@ type estimateFeeTester struct {
 
 func (eft *estimateFeeTester) testTx(fee btcutil.Amount) *TxDesc {
 	eft.version++
+	shellTx := &wire.MsgTx{
+		Version: eft.version,
+	}
 	return &TxDesc{
 		TxDesc: mining.TxDesc{
-			Tx: btcutil.NewTx(&wire.MsgTx{
-				Version: eft.version,
-			}),
+			Tx:     btcutil.NewTx(convert.ToBtcdMsgTx(shellTx)),
 			Height: eft.height,
 			Fee:    int64(fee),
 		},
@@ -69,12 +72,13 @@ func expectedFeePerKilobyte(t *TxDesc) BtcPerKilobyte {
 func (eft *estimateFeeTester) newBlock(txs []*wire.MsgTx) {
 	eft.height++
 
-	block := btcutil.NewBlock(&wire.MsgBlock{
+	shellBlock := &wire.MsgBlock{
 		Transactions: txs,
-	})
+	}
+	block := btcutil.NewBlock(convert.ToBtcdMsgBlock(shellBlock))
 	block.SetHeight(eft.height)
 
-	eft.last = &lastBlock{block.Hash(), eft.last}
+	eft.last = &lastBlock{convert.HashToShell(block.Hash()), eft.last}
 
 	eft.ef.RegisterBlock(block)
 }
@@ -136,7 +140,7 @@ func TestEstimateFee(t *testing.T) {
 	}
 
 	// Record a block with the new tx.
-	eft.newBlock([]*wire.MsgTx{tx.Tx.MsgTx()})
+	eft.newBlock([]*wire.MsgTx{convert.MsgTxToShell(tx.Tx.MsgTx())})
 	expected = expectedFeePerKilobyte(tx)
 	for i := uint32(1); i <= estimateFeeDepth; i++ {
 		estimated, _ := ef.EstimateFee(i)
@@ -162,7 +166,7 @@ func TestEstimateFee(t *testing.T) {
 	// This test was made because of a bug that only appeared when there
 	// were no transactions in the first bin.
 	eft.newBlock([]*wire.MsgTx{})
-	eft.newBlock([]*wire.MsgTx{tx.Tx.MsgTx()})
+	eft.newBlock([]*wire.MsgTx{convert.MsgTxToShell(tx.Tx.MsgTx())})
 	expected = expectedFeePerKilobyte(tx)
 	for i := uint32(1); i <= estimateFeeDepth; i++ {
 		estimated, _ := ef.EstimateFee(i)
@@ -186,7 +190,7 @@ func TestEstimateFee(t *testing.T) {
 	}
 
 	// Mine the first tx.
-	eft.newBlock([]*wire.MsgTx{txA.Tx.MsgTx()})
+	eft.newBlock([]*wire.MsgTx{convert.MsgTxToShell(txA.Tx.MsgTx())})
 
 	// Now the estimated amount should depend on the value
 	// of the argument to estimate fee.
@@ -208,7 +212,7 @@ func TestEstimateFee(t *testing.T) {
 	}
 
 	// Mine the next tx.
-	eft.newBlock([]*wire.MsgTx{txB.Tx.MsgTx()})
+	eft.newBlock([]*wire.MsgTx{convert.MsgTxToShell(txB.Tx.MsgTx())})
 
 	// Now the estimated amount should depend on the value
 	// of the argument to estimate fee.
@@ -233,7 +237,7 @@ func TestEstimateFee(t *testing.T) {
 	}
 
 	// Mine txC.
-	eft.newBlock([]*wire.MsgTx{txC.Tx.MsgTx()})
+	eft.newBlock([]*wire.MsgTx{convert.MsgTxToShell(txC.Tx.MsgTx())})
 
 	// This should have no effect on the outcome because too
 	// many blocks have been mined for txC to be recorded.
@@ -291,7 +295,8 @@ func (eft *estimateFeeTester) round(txHistory [][]*TxDesc,
 	mempool := make(map[*observedTransaction]*TxDesc)
 	for _, h := range txHistory {
 		for _, t := range h {
-			if o, exists := eft.ef.observed[*t.Tx.Hash()]; exists && o.mined == mining.UnminedHeight {
+			shellHash := *convert.HashToShell(t.Tx.Hash())
+			if o, exists := eft.ef.observed[shellHash]; exists && o.mined == mining.UnminedHeight {
 				mempool[o] = t
 			}
 		}
@@ -301,7 +306,7 @@ func (eft *estimateFeeTester) round(txHistory [][]*TxDesc,
 	i := uint32(0)
 	newBlockList := make([]*wire.MsgTx, 0, txPerBlock)
 	for _, t := range mempool {
-		newBlockList = append(newBlockList, t.TxDesc.Tx.MsgTx())
+		newBlockList = append(newBlockList, convert.MsgTxToShell(t.TxDesc.Tx.MsgTx()))
 		i++
 
 		if i == txPerBlock {

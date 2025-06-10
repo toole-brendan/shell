@@ -12,13 +12,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/toole-brendan/shell/blockchain"
 	"github.com/btcsuite/btcd/btcutil"
+	"github.com/toole-brendan/shell/blockchain"
 	"github.com/toole-brendan/shell/chaincfg"
 	"github.com/toole-brendan/shell/chaincfg/chainhash"
+	"github.com/toole-brendan/shell/internal/convert"
 	"github.com/toole-brendan/shell/mining"
 	"github.com/toole-brendan/shell/wire"
-	"github.com/toole-brendan/shell/internal/convert"
 )
 
 const (
@@ -163,7 +163,7 @@ func (m *CPUMiner) submitBlock(block *btcutil.Block) bool {
 	// a new block, but the check only happens periodically, so it is
 	// possible a block was found and submitted in between.
 	msgBlock := block.MsgBlock()
-	if !msgBlock.Header.PrevBlock.IsEqual(&m.g.BestSnapshot().Hash) {
+	if !msgBlock.Header.PrevBlock.IsEqual(convert.HashToBtc(&m.g.BestSnapshot().Hash)) {
 		log.Debugf("Block submitted via CPU miner with previous "+
 			"block %s is stale", msgBlock.Header.PrevBlock)
 		return false
@@ -250,7 +250,7 @@ func (m *CPUMiner) solveBlock(msgBlock *wire.MsgBlock, blockHeight int32,
 				// The current block is stale if the best block
 				// has changed.
 				best := m.g.BestSnapshot()
-				if !header.PrevBlock.IsEqual(convert.HashToBtc(&best.Hash)) {
+				if !header.PrevBlock.IsEqual(&best.Hash) {
 					return false
 				}
 
@@ -612,7 +612,7 @@ func (m *CPUMiner) GenerateNBlocks(n uint32) ([]*chainhash.Hash, error) {
 		if m.solveBlock(template.Block, curHeight+1, ticker, nil) {
 			block := convert.NewShellBlock(template.Block)
 			m.submitBlock(block)
-			blockHashes[i] = block.Hash()
+			blockHashes[i] = convert.HashToShell(block.Hash())
 			i++
 			if i == n {
 				log.Tracef("Generated %d blocks", i)

@@ -331,8 +331,11 @@ func newPoolHarness(chainParams *chaincfg.Params) (*poolHarness, []spendableOutp
 			BestHeight:       chain.BestHeight,
 			MedianTimePast:   chain.MedianTimePast,
 			CalcSequenceLock: chain.CalcSequenceLock,
-			SigCache:         nil,
-			AddrIndex:        nil,
+			IsDeploymentActive: func(deploymentID uint32) (bool, error) {
+				return true, nil
+			},
+			SigCache:  nil,
+			AddrIndex: nil,
 		}),
 	}
 
@@ -1363,7 +1366,7 @@ func TestConflicts(t *testing.T) {
 					len(conflicts), len(txConflicts))
 			}
 			for _, conflict := range conflicts {
-				conflictHash := *conflict.Hash()
+				conflictHash := *convert.HashToShell(conflict.Hash())
 				if _, ok := txConflicts[conflictHash]; !ok {
 					ctx.t.Fatalf("expected %v to be found "+
 						"as a conflict", conflictHash)

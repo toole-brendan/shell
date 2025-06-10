@@ -5,14 +5,12 @@
 package mempool
 
 import (
-	"github.com/toole-brendan/shell/internal/convert"
-)
-import (
 	"fmt"
 	"time"
 
-	"github.com/toole-brendan/shell/blockchain"
 	"github.com/btcsuite/btcd/btcutil"
+	"github.com/toole-brendan/shell/blockchain"
+	"github.com/toole-brendan/shell/internal/convert"
 	"github.com/toole-brendan/shell/txscript"
 	"github.com/toole-brendan/shell/wire"
 )
@@ -101,7 +99,7 @@ func checkInputsStandard(tx *btcutil.Tx, utxoView *blockchain.UtxoViewpoint) err
 		// It is safe to elide existence and index checks here since
 		// they have already been checked prior to calling this
 		// function.
-		entry := utxoView.LookupEntry(convert.OutPointToShell(&txIn.PreviousOutPoint))
+		entry := utxoView.LookupEntry(convert.OutPointToShell(txIn.PreviousOutPoint))
 		originPkScript := entry.PkScript()
 		switch txscript.GetScriptClass(originPkScript) {
 		case txscript.ScriptHashTy:
@@ -361,7 +359,7 @@ func CheckTransactionStandard(tx *btcutil.Tx, height int32,
 		// "dust".
 		if scriptClass == txscript.NullDataTy {
 			numNullDataOutputs++
-		} else if IsDust(txOut, minRelayTxFee) {
+		} else if IsDust(&wire.TxOut{Value: txOut.Value, PkScript: txOut.PkScript}, minRelayTxFee) {
 			str := fmt.Sprintf("transaction output %d: payment is "+
 				"dust: %v", i, txOut.Value)
 			return txRuleError(wire.RejectDust, str)

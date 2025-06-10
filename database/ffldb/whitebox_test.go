@@ -18,12 +18,12 @@ import (
 	"testing"
 
 	"github.com/btcsuite/btcd/btcutil"
-	"github.com/toole-brendan/shell/chaincfg"
-	"github.com/toole-brendan/shell/database"
-	"github.com/toole-brendan/shell/wire"
 	"github.com/syndtr/goleveldb/leveldb"
 	ldberrors "github.com/syndtr/goleveldb/leveldb/errors"
+	"github.com/toole-brendan/shell/chaincfg"
+	"github.com/toole-brendan/shell/database"
 	"github.com/toole-brendan/shell/internal/convert"
+	"github.com/toole-brendan/shell/wire"
 )
 
 var (
@@ -443,12 +443,13 @@ func testBlockFileErrors(tc *testContext) bool {
 	// Ensure errors in readBlock and readBlockRegion when requesting a file
 	// number that doesn't exist.
 	block0Hash := tc.blocks[0].Hash()
+	shellBlock0Hash := convert.HashToShell(block0Hash)
 	testName = "readBlock invalid file number"
 	invalidLoc := blockLocation{
 		blockFileNum: ^uint32(0),
 		blockLen:     80,
 	}
-	_, err = store.readBlock(block0Hash, invalidLoc)
+	_, err = store.readBlock(shellBlock0Hash, invalidLoc)
 	if !checkDbError(tc.t, testName, err, database.ErrDriverSpecific) {
 		return false
 	}
@@ -468,7 +469,7 @@ func testBlockFileErrors(tc *testContext) bool {
 	err = tc.db.View(func(tx database.Tx) error {
 		testName = "FetchBlock closed file"
 		wantErrCode := database.ErrDriverSpecific
-		_, err := tx.FetchBlock(block0Hash)
+		_, err := tx.FetchBlock(shellBlock0Hash)
 		if !checkDbError(tc.t, testName, err, wantErrCode) {
 			return errSubTestFail
 		}
@@ -476,7 +477,7 @@ func testBlockFileErrors(tc *testContext) bool {
 		testName = "FetchBlockRegion closed file"
 		regions := []database.BlockRegion{
 			{
-				Hash:   block0Hash,
+				Hash:   shellBlock0Hash,
 				Len:    80,
 				Offset: 0,
 			},
@@ -532,6 +533,7 @@ func testCorruption(tc *testContext) bool {
 	// stored to the mock file and reading the block.
 	block0Bytes, _ := tc.blocks[0].Bytes()
 	block0Hash := tc.blocks[0].Hash()
+	shellBlock0Hash := convert.HashToShell(block0Hash)
 	tests := []struct {
 		offset      uint32
 		fixChecksum bool
@@ -575,7 +577,7 @@ func testCorruption(tc *testContext) bool {
 
 			testName := fmt.Sprintf("FetchBlock (test #%d): "+
 				"corruption", i)
-			_, err := tx.FetchBlock(block0Hash)
+			_, err := tx.FetchBlock(shellBlock0Hash)
 			if !checkDbError(tc.t, testName, err, test.wantErrCode) {
 				return errSubTestFail
 			}

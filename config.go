@@ -22,18 +22,19 @@ import (
 	"strings"
 	"time"
 
-	"github.com/toole-brendan/shell/blockchain"
 	"github.com/btcsuite/btcd/btcutil"
+	"github.com/btcsuite/go-socks/socks"
+	flags "github.com/jessevdk/go-flags"
+	"github.com/toole-brendan/shell/blockchain"
 	"github.com/toole-brendan/shell/chaincfg"
 	"github.com/toole-brendan/shell/chaincfg/chainhash"
 	"github.com/toole-brendan/shell/connmgr"
 	"github.com/toole-brendan/shell/database"
 	_ "github.com/toole-brendan/shell/database/ffldb"
+	"github.com/toole-brendan/shell/internal/convert"
 	"github.com/toole-brendan/shell/mempool"
 	"github.com/toole-brendan/shell/peer"
 	"github.com/toole-brendan/shell/wire"
-	"github.com/btcsuite/go-socks/socks"
-	flags "github.com/jessevdk/go-flags"
 )
 
 const (
@@ -936,7 +937,7 @@ func loadConfig() (*config, []string, error) {
 	// Check mining addresses are valid and saved parsed versions.
 	cfg.miningAddrs = make([]btcutil.Address, 0, len(cfg.MiningAddrs))
 	for _, strAddr := range cfg.MiningAddrs {
-		addr, err := btcutil.DecodeAddress(strAddr, activeNetParams.Params)
+		addr, err := btcutil.DecodeAddress(strAddr, convert.ParamsToBtc(activeNetParams.Name))
 		if err != nil {
 			str := "%s: mining address '%s' failed to decode: %v"
 			err := fmt.Errorf(str, funcName, strAddr, err)
@@ -944,7 +945,7 @@ func loadConfig() (*config, []string, error) {
 			fmt.Fprintln(os.Stderr, usageMessage)
 			return nil, nil, err
 		}
-		if !addr.IsForNet(activeNetParams.Params) {
+		if !addr.IsForNet(convert.ParamsToBtc(activeNetParams.Name)) {
 			str := "%s: mining address '%s' is on the wrong network"
 			err := fmt.Errorf(str, funcName, strAddr)
 			fmt.Fprintln(os.Stderr, err)

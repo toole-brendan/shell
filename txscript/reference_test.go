@@ -17,7 +17,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/toole-brendan/shell/chaincfg/chainhash"
+	"github.com/toole-brendan/shell/internal/convert"
 	"github.com/toole-brendan/shell/wire"
 )
 
@@ -651,7 +653,7 @@ testloop:
 
 		for k, txin := range tx.MsgTx().TxIn {
 			prevOut := prevOutFetcher.FetchPrevOutput(
-				txin.PreviousOutPoint,
+				convert.OutPointToShell(txin.PreviousOutPoint),
 			)
 			if prevOut == nil {
 				t.Errorf("bad test (missing %dth input) %d:%v",
@@ -661,7 +663,7 @@ testloop:
 			// These are meant to fail, so as soon as the first
 			// input fails the transaction has failed. (some of the
 			// test txns have good inputs, too..
-			vm, err := NewEngine(prevOut.PkScript, tx.MsgTx(), k,
+			vm, err := NewEngine(prevOut.PkScript, convert.ToShellMsgTx(tx.MsgTx()), k,
 				flags, nil, nil, prevOut.Value, prevOutFetcher)
 			if err != nil {
 				continue testloop
@@ -808,14 +810,14 @@ testloop:
 
 		for k, txin := range tx.MsgTx().TxIn {
 			prevOut := prevOutFetcher.FetchPrevOutput(
-				txin.PreviousOutPoint,
+				convert.OutPointToShell(txin.PreviousOutPoint),
 			)
 			if prevOut == nil {
 				t.Errorf("bad test (missing %dth input) %d:%v",
 					k, i, test)
 				continue testloop
 			}
-			vm, err := NewEngine(prevOut.PkScript, tx.MsgTx(), k,
+			vm, err := NewEngine(prevOut.PkScript, convert.ToShellMsgTx(tx.MsgTx()), k,
 				flags, nil, nil, prevOut.Value, prevOutFetcher)
 			if err != nil {
 				t.Errorf("test (%d:%v:%d) failed to create "+
@@ -940,7 +942,7 @@ func executeTaprootRefTest(t *testing.T, testCase taprootJsonTest) {
 		}
 
 		prevOutFetcher.AddPrevOut(
-			tx.MsgTx().TxIn[i].PreviousOutPoint, &txOut,
+			convert.OutPointToShell(tx.MsgTx().TxIn[i].PreviousOutPoint), &txOut,
 		)
 
 		if i == testCase.Index {
@@ -954,10 +956,10 @@ func executeTaprootRefTest(t *testing.T, testCase taprootJsonTest) {
 	}
 
 	makeVM := func() *Engine {
-		hashCache := NewTxSigHashes(tx.MsgTx(), prevOutFetcher)
+		hashCache := NewTxSigHashes(convert.ToShellMsgTx(tx.MsgTx()), prevOutFetcher)
 
 		vm, err := NewEngine(
-			prevOut.PkScript, tx.MsgTx(), testCase.Index,
+			prevOut.PkScript, convert.ToShellMsgTx(tx.MsgTx()), testCase.Index,
 			flags, nil, hashCache, prevOut.Value, prevOutFetcher,
 		)
 		if err != nil {

@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/btcsuite/btcd/btcutil"
+	btcchaincfg "github.com/btcsuite/btcd/chaincfg"
 	"github.com/toole-brendan/shell/chaincfg"
 	"github.com/toole-brendan/shell/internal/convert"
 	"github.com/toole-brendan/shell/wire"
@@ -605,7 +606,7 @@ func (b *bogusAddress) ScriptAddress() []byte {
 }
 
 // IsForNet lies blatantly to satisfy the btcutil.Address interface.
-func (b *bogusAddress) IsForNet(chainParams *chaincfg.Params) bool {
+func (b *bogusAddress) IsForNet(chainParams *btcchaincfg.Params) bool {
 	return true // why not?
 }
 
@@ -622,7 +623,7 @@ func TestPayToAddrScript(t *testing.T) {
 
 	// 1MirQ9bwyQcGVJPwKUgapu5ouK2E2Ey4gX
 	p2pkhMain, err := btcutil.NewAddressPubKeyHash(hexToBytes("e34cce70c86"+
-		"373273efcc54ce7d2a491bb4a0e84"), &chaincfg.MainNetParams)
+		"373273efcc54ce7d2a491bb4a0e84"), convert.ParamsToBtc(chaincfg.MainNetParams.Name))
 	if err != nil {
 		t.Fatalf("Unable to create public key hash address: %v", err)
 	}
@@ -630,7 +631,7 @@ func TestPayToAddrScript(t *testing.T) {
 	// Taken from transaction:
 	// b0539a45de13b3e0403909b8bd1a555b8cbe45fd4e3f3fda76f3a5f52835c29d
 	p2shMain, _ := btcutil.NewAddressScriptHashFromHash(hexToBytes("e8c300"+
-		"c87986efa84c37c0519929019ef86eb5b4"), &chaincfg.MainNetParams)
+		"c87986efa84c37c0519929019ef86eb5b4"), convert.ParamsToBtc(chaincfg.MainNetParams.Name))
 	if err != nil {
 		t.Fatalf("Unable to create script hash address: %v", err)
 	}
@@ -638,14 +639,14 @@ func TestPayToAddrScript(t *testing.T) {
 	//  mainnet p2pk 13CG6SJ3yHUXo4Cr2RY4THLLJrNFuG3gUg
 	p2pkCompressedMain, err := btcutil.NewAddressPubKey(hexToBytes("02192d"+
 		"74d0cb94344c9569c2e77901573d8d7903c3ebec3a957724895dca52c6b4"),
-		&chaincfg.MainNetParams)
+		convert.ParamsToBtc(chaincfg.MainNetParams.Name))
 	if err != nil {
 		t.Fatalf("Unable to create pubkey address (compressed): %v",
 			err)
 	}
 	p2pkCompressed2Main, err := btcutil.NewAddressPubKey(hexToBytes("03b0b"+
 		"d634234abbb1ba1e986e884185c61cf43e001f9137f23c2c409273eb16e65"),
-		&chaincfg.MainNetParams)
+		convert.ParamsToBtc(chaincfg.MainNetParams.Name))
 	if err != nil {
 		t.Fatalf("Unable to create pubkey address (compressed 2): %v",
 			err)
@@ -654,28 +655,28 @@ func TestPayToAddrScript(t *testing.T) {
 	p2pkUncompressedMain, err := btcutil.NewAddressPubKey(hexToBytes("0411"+
 		"db93e1dcdb8a016b49840f8c53bc1eb68a382e97b1482ecad7b148a6909a5"+
 		"cb2e0eaddfb84ccf9744464f82e160bfa9b8b64f9d4c03f999b8643f656b4"+
-		"12a3"), &chaincfg.MainNetParams)
+		"12a3"), convert.ParamsToBtc(chaincfg.MainNetParams.Name))
 	if err != nil {
 		t.Fatalf("Unable to create pubkey address (uncompressed): %v",
 			err)
 	}
 
 	p2wsh, err := btcutil.NewAddressWitnessScriptHash(hexToBytes("e981bd992a43650657"+
-		"d705ef7a30b2adc75a927ed42a4cf6b3da0f865a475fb4"), &chaincfg.MainNetParams)
+		"d705ef7a30b2adc75a927ed42a4cf6b3da0f865a475fb4"), convert.ParamsToBtc(chaincfg.MainNetParams.Name))
 	if err != nil {
 		t.Fatalf("Unable to create p2wsh address: %v",
 			err)
 	}
 
 	p2tr, err := btcutil.NewAddressTaproot(hexToBytes("3a8e170b546c3b122ab9c175e"+
-		"ff36fb344db2684fe96497eb51b440e75232709"), &chaincfg.MainNetParams)
+		"ff36fb344db2684fe96497eb51b440e75232709"), convert.ParamsToBtc(chaincfg.MainNetParams.Name))
 	if err != nil {
 		t.Fatalf("Unable to create p2tr address: %v",
 			err)
 	}
 
 	p2wpkh, err := btcutil.NewAddressWitnessPubKeyHash(hexToBytes("748e50366adb8"+
-		"ae4b0255e406a28f99d24b73cbc"), &chaincfg.MainNetParams)
+		"ae4b0255e406a28f99d24b73cbc"), convert.ParamsToBtc(chaincfg.MainNetParams.Name))
 	if err != nil {
 		t.Fatalf("Unable to create p2wpkh address: %v",
 			err)
@@ -786,14 +787,14 @@ func TestMultiSigScript(t *testing.T) {
 	//  mainnet p2pk 13CG6SJ3yHUXo4Cr2RY4THLLJrNFuG3gUg
 	p2pkCompressedMain, err := btcutil.NewAddressPubKey(hexToBytes("02192d"+
 		"74d0cb94344c9569c2e77901573d8d7903c3ebec3a957724895dca52c6b4"),
-		&chaincfg.MainNetParams)
+		convert.ParamsToBtc(chaincfg.MainNetParams.Name))
 	if err != nil {
 		t.Fatalf("Unable to create pubkey address (compressed): %v",
 			err)
 	}
 	p2pkCompressed2Main, err := btcutil.NewAddressPubKey(hexToBytes("03b0b"+
 		"d634234abbb1ba1e986e884185c61cf43e001f9137f23c2c409273eb16e65"),
-		&chaincfg.MainNetParams)
+		convert.ParamsToBtc(chaincfg.MainNetParams.Name))
 	if err != nil {
 		t.Fatalf("Unable to create pubkey address (compressed 2): %v",
 			err)
@@ -802,7 +803,7 @@ func TestMultiSigScript(t *testing.T) {
 	p2pkUncompressedMain, err := btcutil.NewAddressPubKey(hexToBytes("0411"+
 		"db93e1dcdb8a016b49840f8c53bc1eb68a382e97b1482ecad7b148a6909a5"+
 		"cb2e0eaddfb84ccf9744464f82e160bfa9b8b64f9d4c03f999b8643f656b4"+
-		"12a3"), &chaincfg.MainNetParams)
+		"12a3"), convert.ParamsToBtc(chaincfg.MainNetParams.Name))
 	if err != nil {
 		t.Fatalf("Unable to create pubkey address (uncompressed): %v",
 			err)

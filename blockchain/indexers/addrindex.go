@@ -9,14 +9,14 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/toole-brendan/shell/blockchain"
 	"github.com/btcsuite/btcd/btcutil"
+	"github.com/toole-brendan/shell/blockchain"
 	"github.com/toole-brendan/shell/chaincfg"
 	"github.com/toole-brendan/shell/chaincfg/chainhash"
 	"github.com/toole-brendan/shell/database"
+	"github.com/toole-brendan/shell/internal/convert"
 	"github.com/toole-brendan/shell/txscript"
 	"github.com/toole-brendan/shell/wire"
-	"github.com/toole-brendan/shell/internal/convert"
 )
 
 const (
@@ -775,8 +775,12 @@ func (idx *AddrIndex) ConnectBlock(dbTx database.Tx, block *btcutil.Block,
 	addrIdxBucket := dbTx.Metadata().Bucket(addrIndexKey)
 	for addrKey, txIdxs := range addrsToTxns {
 		for _, txIdx := range txIdxs {
+			shellTxLoc := wire.TxLoc{
+				TxStart: txLocs[txIdx].TxStart,
+				TxLen:   txLocs[txIdx].TxLen,
+			}
 			err := dbPutAddrIndexEntry(addrIdxBucket, addrKey,
-				blockID, txLocs[txIdx])
+				blockID, shellTxLoc)
 			if err != nil {
 				return err
 			}
@@ -878,10 +882,10 @@ func (idx *AddrIndex) indexUnconfirmedAddresses(pkScript []byte, tx *btcutil.Tx)
 		addrIndexEntry[*convert.HashToShell(tx.Hash())] = tx
 
 		// Add a mapping from the transaction to the address.
-		addrsByTxEntry := idx.addrsByTx[convert.HashToShell(tx.Hash()))]
+		addrsByTxEntry := idx.addrsByTx[*convert.HashToShell(tx.Hash())]
 		if addrsByTxEntry == nil {
 			addrsByTxEntry = make(map[[addrKeySize]byte]struct{})
-			idx.addrsByTx[convert.HashToShell(tx.Hash()))] = addrsByTxEntry
+			idx.addrsByTx[*convert.HashToShell(tx.Hash())] = addrsByTxEntry
 		}
 		addrsByTxEntry[addrKey] = struct{}{}
 		idx.unconfirmedLock.Unlock()
@@ -904,7 +908,7 @@ func (idx *AddrIndex) AddUnconfirmedTx(tx *btcutil.Tx, utxoView *blockchain.Utxo
 	// transaction has already been validated and thus all inputs are
 	// already known to exist.
 	for _, txIn := range tx.MsgTx().TxIn {
-		entry := utxoView.LookupEntry(convert.OutPointToShell(&txIn.PreviousOutPoint))
+		entry := utxoView.LookupEntry(convert.OutPointToShell(txIn.PreviousOutPoint))
 		if entry == nil {
 			// Ignore missing entries.  This should never happen
 			// in practice since the function comments specifically

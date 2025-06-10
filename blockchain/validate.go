@@ -15,9 +15,9 @@ import (
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/toole-brendan/shell/chaincfg"
 	"github.com/toole-brendan/shell/chaincfg/chainhash"
+	"github.com/toole-brendan/shell/internal/convert"
 	"github.com/toole-brendan/shell/txscript"
 	"github.com/toole-brendan/shell/wire"
-	"github.com/toole-brendan/shell/internal/convert"
 )
 
 const (
@@ -122,7 +122,7 @@ func IsCoinBaseTx(msgTx *wire.MsgTx) bool {
 // This function only differs from IsCoinBaseTx in that it works with a higher
 // level util transaction as opposed to a raw wire transaction.
 func IsCoinBase(tx *btcutil.Tx) bool {
-	return IsCoinBaseTx(tx.MsgTx())
+	return IsCoinBaseTx(convert.ToShellMsgTx(tx.MsgTx()))
 }
 
 // SequenceLockActive determines if a transaction's sequence locks have been
@@ -227,7 +227,7 @@ func CheckTransactionSanity(tx *btcutil.Tx) error {
 
 	// A transaction must not exceed the maximum allowed block payload when
 	// serialized.
-	serializedTxSize := tx.MsgTx().SerializeSizeStripped()
+	serializedTxSize := msgTx.SerializeSizeStripped()
 	if serializedTxSize > MaxBlockBaseSize {
 		str := fmt.Sprintf("serialized transaction is too big - got "+
 			"%d, max %d", serializedTxSize, MaxBlockBaseSize)
@@ -277,11 +277,11 @@ func CheckTransactionSanity(tx *btcutil.Tx) error {
 	// Check for duplicate transaction inputs.
 	existingTxOut := make(map[wire.OutPoint]struct{})
 	for _, txIn := range msgTx.TxIn {
-		if _, exists := existingTxOut[convert.OutPointToShell(&txIn.PreviousOutPoint)]; exists {
+		if _, exists := existingTxOut[convert.OutPointToShell(txIn.PreviousOutPoint)]; exists {
 			return ruleError(ErrDuplicateTxInputs, "transaction "+
 				"contains duplicate inputs")
 		}
-		existingTxOut[convert.OutPointToShell(&txIn.PreviousOutPoint)] = struct{}{}
+		existingTxOut[convert.OutPointToShell(txIn.PreviousOutPoint)] = struct{}{}
 	}
 
 	// Coinbase script length must be between min and max length.
@@ -297,7 +297,7 @@ func CheckTransactionSanity(tx *btcutil.Tx) error {
 		// Previous transaction outputs referenced by the inputs to this
 		// transaction must not be null.
 		for _, txIn := range msgTx.TxIn {
-			if isNullOutpoint(&txIn.PreviousOutPoint) {
+			if isNullOutpoint(convert.ToShellOutPoint(&txIn.PreviousOutPoint)) {
 				return ruleError(ErrBadTxInput, "transaction "+
 					"input refers to previous output that "+
 					"is null")
@@ -351,7 +351,7 @@ func checkProofOfWork(header *wire.BlockHeader, powLimit *big.Int, flags Behavio
 // difficulty is in min/max range and that the block hash is less than the
 // target difficulty as claimed.
 func CheckProofOfWork(block *btcutil.Block, powLimit *big.Int) error {
-	return checkProofOfWork(&block.MsgBlock().Header, powLimit, BFNone)
+	return checkProofOfWork(convert.ToShellBlockHeader(&block.MsgBlock().Header), powLimit, BFNone)
 }
 
 // CountSigOps returns the number of signature operations for all transaction
@@ -395,7 +395,7 @@ func CountP2SHSigOps(tx *btcutil.Tx, isCoinBaseTx bool, utxoView *UtxoViewpoint)
 	totalSigOps := 0
 	for txInIndex, txIn := range msgTx.TxIn {
 		// Ensure the referenced input transaction is available.
-		utxo := utxoView.LookupEntry(convert.OutPointToShell(&txIn.PreviousOutPoint))
+		utxo := utxoView.LookupEntry(convert.OutPointToShell(txIn.PreviousOutPoint))
 		if utxo == nil || utxo.IsSpent() {
 			str := fmt.Sprintf("output %v referenced from "+
 				"transaction %s:%d either does not exist or "+
@@ -480,7 +480,7 @@ func CheckBlockHeaderSanity(header *wire.BlockHeader, powLimit *big.Int,
 func checkBlockSanity(block *btcutil.Block, powLimit *big.Int, timeSource MedianTimeSource, flags BehaviorFlags) error {
 	msgBlock := block.MsgBlock()
 	header := &msgBlock.Header
-	err := CheckBlockHeaderSanity(header, powLimit, timeSource, flags)
+	err := CheckBlockHeaderSanity(convert.ToShellBlockHeader(header), powLimit, timeSource, flags)
 	if err != nil {
 		return err
 	}
@@ -541,7 +541,7 @@ func checkBlockSanity(block *btcutil.Block, powLimit *big.Int, timeSource Median
 	// after the following checks, but there is no reason not to check the
 	// merkle root matches here.
 	calcMerkleRoot := CalcMerkleRoot(block.Transactions(), false)
-	if !header.MerkleRoot.IsEqual(&calcMerkleRoot) {
+	if !header.MerkleRoot.IsEqual(convert.HashToBtc(&calcMerkleRoot)) {
 		str := fmt.Sprintf("block merkle root is invalid - block "+
 			"header indicates %v, but calculated value is %v",
 			header.MerkleRoot, calcMerkleRoot)
@@ -554,12 +554,12 @@ func checkBlockSanity(block *btcutil.Block, powLimit *big.Int, timeSource Median
 	existingTxHashes := make(map[chainhash.Hash]struct{})
 	for _, tx := range transactions {
 		hash := tx.Hash()
-		if _, exists := existingTxHashes[*hash]; exists {
+		if _, exists := existingTxHashes[*convert.HashToShell(hash)]; exists {
 			str := fmt.Sprintf("block contains duplicate "+
 				"transaction %v", hash)
 			return ruleError(ErrDuplicateTx, str)
 		}
-		existingTxHashes[*hash] = struct{}{}
+		existingTxHashes[*convert.HashToShell(hash)] = struct{}{}
 	}
 
 	// The number of signature operations must be less than the maximum
@@ -819,7 +819,7 @@ func assertNoTimeWarp(blockHeight, blocksPerReTarget int32, headerTimestamp,
 func (b *BlockChain) checkBlockContext(block *btcutil.Block, prevNode *blockNode, flags BehaviorFlags) error {
 	// Perform all block header related validation checks.
 	header := &block.MsgBlock().Header
-	err := CheckBlockHeaderContext(header, prevNode, flags, b, false)
+	err := CheckBlockHeaderContext(convert.ToShellBlockHeader(header), prevNode, flags, b, false)
 	if err != nil {
 		return err
 	}
@@ -861,7 +861,7 @@ func (b *BlockChain) checkBlockContext(block *btcutil.Block, prevNode *blockNode
 		// blocks whose version is the serializedHeightVersion or newer
 		// once a majority of the network has upgraded.  This is part of
 		// BIP0034.
-		if ShouldHaveSerializedBlockHeight(header) &&
+		if ShouldHaveSerializedBlockHeight(convert.ToShellBlockHeader(header)) &&
 			blockHeight >= b.chainParams.BIP0034Height {
 
 			coinbaseTx := block.Transactions()[0]
@@ -927,7 +927,7 @@ func (b *BlockChain) checkBIP0030(node *blockNode, block *btcutil.Block, view *U
 	// Typically, there will not be any utxos for any of the outputs.
 	fetch := make([]wire.OutPoint, 0, len(block.Transactions()))
 	for _, tx := range block.Transactions() {
-		prevOut := wire.OutPoint{Hash: *convert.HashToShell(tx.Hash()),}
+		prevOut := wire.OutPoint{Hash: *convert.HashToShell(tx.Hash())}
 		for txOutIdx := range tx.MsgTx().TxOut {
 			prevOut.Index = uint32(txOutIdx)
 			fetch = append(fetch, prevOut)
@@ -973,7 +973,7 @@ func CheckTransactionInputs(tx *btcutil.Tx, txHeight int32, utxoView *UtxoViewpo
 	var totalSatoshiIn int64
 	for txInIndex, txIn := range tx.MsgTx().TxIn {
 		// Ensure the referenced input transaction is available.
-		utxo := utxoView.LookupEntry(convert.OutPointToShell(&txIn.PreviousOutPoint))
+		utxo := utxoView.LookupEntry(convert.OutPointToShell(txIn.PreviousOutPoint))
 		if utxo == nil || utxo.IsSpent() {
 			str := fmt.Sprintf("output %v referenced from "+
 				"transaction %s:%d either does not exist or "+
@@ -1094,7 +1094,7 @@ func (b *BlockChain) checkConnectBlock(node *blockNode, block *btcutil.Block, vi
 
 	// Ensure the view is for the node being checked.
 	parentHash := &block.MsgBlock().Header.PrevBlock
-	if !view.BestHash().IsEqual(parentHash) {
+	if !view.BestHash().IsEqual(convert.HashToShell(parentHash)) {
 		return AssertError(fmt.Sprintf("inconsistent view when "+
 			"checking block connection: best hash is %v instead "+
 			"of expected %v", view.BestHash(), parentHash))
@@ -1358,7 +1358,7 @@ func (b *BlockChain) CheckConnectBlockTemplate(block *btcutil.Block) error {
 	// current chain.
 	tip := b.bestChain.Tip()
 	header := block.MsgBlock().Header
-	if tip.hash != header.PrevBlock {
+	if !tip.hash.IsEqual(convert.HashToShell(&header.PrevBlock)) {
 		str := fmt.Sprintf("previous block must be the current chain tip %v, "+
 			"instead got %v", tip.hash, header.PrevBlock)
 		return ruleError(ErrPrevBlockNotBest, str)
@@ -1378,7 +1378,7 @@ func (b *BlockChain) CheckConnectBlockTemplate(block *btcutil.Block) error {
 	// is not needed and thus extra work can be avoided.
 	view := NewUtxoViewpoint()
 	view.SetBestHash(&tip.hash)
-	newNode := newBlockNode(&header, tip)
+	newNode := newBlockNode(convert.ToShellBlockHeader(&header), tip)
 	return b.checkConnectBlock(newNode, block, view, nil)
 }
 

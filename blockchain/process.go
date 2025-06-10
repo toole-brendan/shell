@@ -11,6 +11,7 @@ import (
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/toole-brendan/shell/chaincfg/chainhash"
 	"github.com/toole-brendan/shell/database"
+	"github.com/toole-brendan/shell/internal/convert"
 )
 
 // BehaviorFlags is a bitmask defining tweaks to the normal behavior when
@@ -123,7 +124,7 @@ func (b *BlockChain) processOrphans(hash *chainhash.Hash, flags BehaviorFlags) e
 			// Add this block to the list of blocks to process so
 			// any orphan blocks that depend on this block are
 			// handled too.
-			processHashes = append(processHashes, orphanHash)
+			processHashes = append(processHashes, convert.HashToShell(orphanHash))
 		}
 	}
 	return nil
@@ -149,7 +150,7 @@ func (b *BlockChain) ProcessBlock(block *btcutil.Block, flags BehaviorFlags) (bo
 	log.Tracef("Processing block %v", blockHash)
 
 	// The block must not already exist in the main chain or side chains.
-	exists, err := b.blockExists(blockHash)
+	exists, err := b.blockExists(convert.HashToShell(blockHash))
 	if err != nil {
 		return false, false, err
 	}
@@ -159,7 +160,7 @@ func (b *BlockChain) ProcessBlock(block *btcutil.Block, flags BehaviorFlags) (bo
 	}
 
 	// The block must not already exist as an orphan.
-	if _, exists := b.orphans[*blockHash]; exists {
+	if _, exists := b.orphans[*convert.HashToShell(blockHash)]; exists {
 		str := fmt.Sprintf("already have block (orphan) %v", blockHash)
 		return false, false, ruleError(ErrDuplicateBlock, str)
 	}
@@ -212,7 +213,7 @@ func (b *BlockChain) ProcessBlock(block *btcutil.Block, flags BehaviorFlags) (bo
 
 	// Handle orphan blocks.
 	prevHash := &blockHeader.PrevBlock
-	prevHashExists, err := b.blockExists(prevHash)
+	prevHashExists, err := b.blockExists(convert.HashToShell(prevHash))
 	if err != nil {
 		return false, false, err
 	}
@@ -233,7 +234,7 @@ func (b *BlockChain) ProcessBlock(block *btcutil.Block, flags BehaviorFlags) (bo
 	// Accept any orphan blocks that depend on this block (they are
 	// no longer orphans) and repeat for those accepted blocks until
 	// there are no more.
-	err = b.processOrphans(blockHash, flags)
+	err = b.processOrphans(convert.HashToShell(blockHash), flags)
 	if err != nil {
 		return false, false, err
 	}

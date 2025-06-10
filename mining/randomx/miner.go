@@ -11,9 +11,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/toole-brendan/shell/chaincfg/chainhash"
-	"github.com/toole-brendan/shell/wire"
 	"github.com/btcsuite/btclog"
+	"github.com/toole-brendan/shell/chaincfg/chainhash"
+	"github.com/toole-brendan/shell/internal/convert"
+	"github.com/toole-brendan/shell/wire"
 )
 
 // log is a logger that is initialized with no output filters.  This

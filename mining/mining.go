@@ -10,13 +10,14 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/toole-brendan/shell/blockchain"
 	"github.com/btcsuite/btcd/btcutil"
+	btcwire "github.com/btcsuite/btcd/wire"
+	"github.com/toole-brendan/shell/blockchain"
 	"github.com/toole-brendan/shell/chaincfg"
 	"github.com/toole-brendan/shell/chaincfg/chainhash"
+	"github.com/toole-brendan/shell/internal/convert"
 	"github.com/toole-brendan/shell/txscript"
 	"github.com/toole-brendan/shell/wire"
-	"github.com/toole-brendan/shell/internal/convert"
 )
 
 const (
@@ -292,7 +293,7 @@ func createCoinbaseTx(params *chaincfg.Params, coinbaseScript []byte, nextBlockH
 // which are not provably unspendable as available unspent transaction outputs.
 func spendTransaction(utxoView *blockchain.UtxoViewpoint, tx *btcutil.Tx, height int32) error {
 	for _, txIn := range tx.MsgTx().TxIn {
-		entry := utxoView.LookupEntry(convert.OutPointToShell(&txIn.PreviousOutPoint))
+		entry := utxoView.LookupEntry(convert.OutPointToShell(txIn.PreviousOutPoint))
 		if entry != nil {
 			entry.Spend()
 		}
@@ -539,9 +540,9 @@ mempoolLoop:
 		prioItem := &txPrioItem{tx: tx}
 		for _, txIn := range tx.MsgTx().TxIn {
 			originHash := &txIn.PreviousOutPoint.Hash
-			entry := utxos.LookupEntry(convert.OutPointToShell(&txIn.PreviousOutPoint))
+			entry := utxos.LookupEntry(convert.OutPointToShell(txIn.PreviousOutPoint))
 			if entry == nil || entry.IsSpent() {
-				if !g.txSource.HaveTransaction(originHash) {
+				if !g.txSource.HaveTransaction(convert.HashToShell(originHash)) {
 					log.Tracef("Skipping tx %s because it "+
 						"references unspent output %s "+
 						"which is not available",
@@ -552,17 +553,17 @@ mempoolLoop:
 				// The transaction is referencing another
 				// transaction in the source pool, so setup an
 				// ordering dependency.
-				deps, exists := dependers[*originHash]
+				deps, exists := dependers[*convert.HashToShell(originHash)]
 				if !exists {
 					deps = make(map[chainhash.Hash]*txPrioItem)
-					dependers[*originHash] = deps
+					dependers[*convert.HashToShell(originHash)] = deps
 				}
-				deps[*prioItem.tx.Hash()] = prioItem
+				deps[*convert.HashToShell(prioItem.tx.Hash())] = prioItem
 				if prioItem.dependsOn == nil {
 					prioItem.dependsOn = make(
 						map[chainhash.Hash]struct{})
 				}
-				prioItem.dependsOn[*originHash] = struct{}{}
+				prioItem.dependsOn[*convert.HashToShell(originHash)] = struct{}{}
 
 			}
 		}
@@ -636,12 +637,13 @@ mempoolLoop:
 			// Therefore, we account for the additional weight
 			// within the block with a model coinbase tx with a
 			// witness commitment.
-			coinbaseCopy := convert.NewShellTx(coinbaseTx.MsgTx().Copy())
-			coinbaseCopy.MsgTx().TxIn[0].Witness = [][]byte{
+			coinbaseCopy := btcutil.NewTx(coinbaseTx.MsgTx().Copy())
+			coinbaseCopy.MsgTx().TxIn[0].Witness = btcwire.TxWitness{
 				bytes.Repeat([]byte("a"),
 					blockchain.CoinbaseWitnessDataLen),
 			}
-			coinbaseCopy.MsgTx().AddTxOut(&wire.TxOut{
+			coinbaseCopy.MsgTx().AddTxOut(&btcwire.TxOut{
+				Value: 0,
 				PkScript: bytes.Repeat([]byte("a"),
 					blockchain.CoinbaseWitnessPkScriptLength),
 			})
@@ -830,7 +832,7 @@ mempoolLoop:
 		Bits:       reqDifficulty,
 	}
 	for _, tx := range blockTxns {
-		if err := msgBlock.AddTransaction(tx.MsgTx()); err != nil {
+		if err := msgBlock.AddTransaction(convert.MsgTxToShell(tx.MsgTx())); err != nil {
 			return nil, err
 		}
 	}
@@ -867,7 +869,7 @@ func AddWitnessCommitment(coinbaseTx *btcutil.Tx,
 	// The witness of the coinbase transaction MUST be exactly 32-bytes
 	// of all zeroes.
 	var witnessNonce [blockchain.CoinbaseWitnessDataLen]byte
-	coinbaseTx.MsgTx().TxIn[0].Witness = wire.TxWitness{witnessNonce[:]}
+	coinbaseTx.MsgTx().TxIn[0].Witness = btcwire.TxWitness{witnessNonce[:]}
 
 	// Next, obtain the merkle root of a tree which consists of the
 	// wtxid of all transactions in the block. The coinbase
@@ -890,7 +892,7 @@ func AddWitnessCommitment(coinbaseTx *btcutil.Tx,
 
 	// Finally, create the OP_RETURN carrying witness commitment
 	// output as an additional output within the coinbase.
-	commitmentOutput := &wire.TxOut{
+	commitmentOutput := &btcwire.TxOut{
 		Value:    0,
 		PkScript: witnessScript,
 	}

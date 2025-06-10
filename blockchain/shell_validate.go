@@ -9,6 +9,7 @@ import (
 
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/toole-brendan/shell/chaincfg"
+	"github.com/toole-brendan/shell/internal/convert"
 	"github.com/toole-brendan/shell/privacy/confidential"
 )
 
@@ -87,7 +88,7 @@ func extractConfidentialTxFromWitness(tx *btcutil.Tx) (*confidential.Confidentia
 	// In practice, confidential transaction data would be encoded in witness
 
 	msgTx := tx.MsgTx()
-	confTx := confidential.NewConfidentialTx(msgTx)
+	confTx := confidential.NewConfidentialTx(convert.ToShellMsgTx(msgTx))
 
 	// Extract confidential outputs from witness data
 	// TODO: Implement proper witness parsing for confidential transaction data
@@ -121,7 +122,7 @@ func validateShellBlockRules(block *btcutil.Block, chainParams *chaincfg.Params)
 	}
 
 	coinbaseTx := msgBlock.Transactions[0]
-	if !IsCoinBaseTx(coinbaseTx) {
+	if !IsCoinBaseTx(convert.ToShellMsgTx(coinbaseTx)) {
 		return ruleError(ErrFirstTxNotCoinbase, "first transaction is not coinbase")
 	}
 

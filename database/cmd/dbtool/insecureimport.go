@@ -15,8 +15,8 @@ import (
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/toole-brendan/shell/chaincfg/chainhash"
 	"github.com/toole-brendan/shell/database"
-	"github.com/toole-brendan/shell/wire"
 	"github.com/toole-brendan/shell/internal/convert"
+	"github.com/toole-brendan/shell/wire"
 )
 
 // importCmd defines the configuration options for the insecureimport command.
@@ -133,10 +133,10 @@ func (bi *blockImporter) processBlock(serializedBlock []byte) (bool, error) {
 
 	// Don't bother trying to process orphans.
 	prevHash := &block.MsgBlock().Header.PrevBlock
-	if !prevHash.IsEqual(&zeroHash) {
+	if !prevHash.IsEqual(convert.HashToBtc(&zeroHash)) {
 		var exists bool
 		err := bi.db.View(func(tx database.Tx) error {
-			exists, err = tx.HasBlock(prevHash)
+			exists, err = tx.HasBlock(convert.HashToShell(prevHash))
 			return err
 		})
 		if err != nil {

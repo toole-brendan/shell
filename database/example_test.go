@@ -13,6 +13,7 @@ import (
 	"github.com/toole-brendan/shell/chaincfg"
 	"github.com/toole-brendan/shell/database"
 	_ "github.com/toole-brendan/shell/database/ffldb"
+	"github.com/toole-brendan/shell/internal/convert"
 	"github.com/toole-brendan/shell/wire"
 )
 
@@ -140,7 +141,7 @@ func Example_blockStorageAndRetrieval() {
 	// and example.
 	err = db.Update(func(tx database.Tx) error {
 		genesisBlock := chaincfg.MainNetParams.GenesisBlock
-		return tx.StoreBlock(convert.NewShellBlock(genesisBlock))
+		return tx.StoreBlock(convert.NewBlockFromShellMsgBlock(genesisBlock))
 	})
 	if err != nil {
 		fmt.Println(err)

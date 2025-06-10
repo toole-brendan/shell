@@ -8,12 +8,12 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/toole-brendan/shell/blockchain"
 	"github.com/btcsuite/btcd/btcutil"
+	"github.com/toole-brendan/shell/blockchain"
 	"github.com/toole-brendan/shell/chaincfg/chainhash"
 	"github.com/toole-brendan/shell/database"
-	"github.com/toole-brendan/shell/wire"
 	"github.com/toole-brendan/shell/internal/convert"
+	"github.com/toole-brendan/shell/wire"
 )
 
 const (
@@ -241,9 +241,13 @@ func dbAddTxIndexEntries(dbTx database.Tx, block *btcutil.Block, blockID uint32)
 	offset := 0
 	serializedValues := make([]byte, len(block.Transactions())*txEntrySize)
 	for i, tx := range block.Transactions() {
-		putTxIndexEntry(serializedValues[offset:], blockID, txLocs[i])
+		shellTxLoc := wire.TxLoc{
+			TxStart: txLocs[i].TxStart,
+			TxLen:   txLocs[i].TxLen,
+		}
+		putTxIndexEntry(serializedValues[offset:], blockID, shellTxLoc)
 		endOffset := offset + txEntrySize
-		err := dbPutTxIndexEntry(dbTx, tx.Hash(),
+		err := dbPutTxIndexEntry(dbTx, convert.HashToShell(tx.Hash()),
 			serializedValues[offset:endOffset:endOffset])
 		if err != nil {
 			return err
@@ -401,7 +405,7 @@ func (idx *TxIndex) ConnectBlock(dbTx database.Tx, block *btcutil.Block,
 
 	// Add the new block ID index entry for the block being connected and
 	// update the current internal block ID accordingly.
-	err := dbPutBlockIDIndexEntry(dbTx, block.Hash(), newBlockID)
+	err := dbPutBlockIDIndexEntry(dbTx, convert.HashToShell(block.Hash()), newBlockID)
 	if err != nil {
 		return err
 	}

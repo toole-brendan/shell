@@ -18,6 +18,7 @@ import (
 
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/toole-brendan/shell/chaincfg/chainhash"
+	"github.com/toole-brendan/shell/internal/convert"
 	"github.com/toole-brendan/shell/mining"
 )
 
@@ -206,7 +207,7 @@ func (ef *FeeEstimator) ObserveTransaction(t *TxDesc) {
 		return
 	}
 
-	hash := *t.Tx.Hash()
+	hash := *convert.HashToShell(t.Tx.Hash())
 	if _, ok := ef.observed[hash]; !ok {
 		size := uint32(GetTxVirtualSize(t.Tx))
 
@@ -249,13 +250,13 @@ func (ef *FeeEstimator) RegisterBlock(block *btcutil.Block) error {
 
 	// Keep track of which txs were dropped in case of an orphan block.
 	dropped := &registeredBlock{
-		hash:         *block.Hash(),
+		hash:         *convert.HashToShell(block.Hash()),
 		transactions: make([]*observedTransaction, 0, 100),
 	}
 
 	// Go through the txs in the block.
 	for t := range transactions {
-		hash := *t.Hash()
+		hash := *convert.HashToShell(t.Hash())
 
 		// Have we observed this tx in the mempool?
 		o, ok := ef.observed[hash]

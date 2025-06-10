@@ -12,15 +12,15 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/toole-brendan/shell/blockchain"
 	"github.com/btcsuite/btcd/btcutil"
+	"github.com/toole-brendan/shell/blockchain"
 	"github.com/toole-brendan/shell/chaincfg"
 	"github.com/toole-brendan/shell/chaincfg/chainhash"
 	"github.com/toole-brendan/shell/database"
+	"github.com/toole-brendan/shell/internal/convert"
 	"github.com/toole-brendan/shell/mempool"
 	peerpkg "github.com/toole-brendan/shell/peer"
 	"github.com/toole-brendan/shell/wire"
-	"github.com/toole-brendan/shell/internal/convert"
 )
 
 const (
@@ -625,7 +625,7 @@ func (sm *SyncManager) handleTxMsg(tmsg *txMsg) {
 	// Ignore transactions that we have already rejected.  Do not
 	// send a reject message here because if the transaction was already
 	// rejected, the transaction was unsolicited.
-	if _, exists = sm.rejectedTxns[*txHash]; exists {
+	if _, exists = sm.rejectedTxns[*convert.HashToShell(txHash)]; exists {
 		log.Debugf("Ignoring unsolicited previously rejected "+
 			"transaction %v from %s", txHash, peer)
 		return
@@ -640,13 +640,13 @@ func (sm *SyncManager) handleTxMsg(tmsg *txMsg) {
 	// already knows about it and as such we shouldn't have any more
 	// instances of trying to fetch it, or we failed to insert and thus
 	// we'll retry next time we get an inv.
-	delete(state.requestedTxns, *txHash)
-	delete(sm.requestedTxns, *txHash)
+	delete(state.requestedTxns, *convert.HashToShell(txHash))
+	delete(sm.requestedTxns, *convert.HashToShell(txHash))
 
 	if err != nil {
 		// Do not request this transaction again until a new block
 		// has been processed.
-		limitAdd(sm.rejectedTxns, *txHash, maxRejectedTxns)
+		limitAdd(sm.rejectedTxns, *convert.HashToShell(txHash), maxRejectedTxns)
 
 		// When the error is a rule error, it means the transaction was
 		// simply rejected as opposed to something actually going wrong,
@@ -663,7 +663,7 @@ func (sm *SyncManager) handleTxMsg(tmsg *txMsg) {
 		// Convert the error into an appropriate reject message and
 		// send it.
 		code, reason := mempool.ErrToRejectErr(err)
-		peer.PushRejectMsg(wire.CmdTx, code, reason, txHash, false)
+		peer.PushRejectMsg(wire.CmdTx, code, reason, convert.HashToShell(txHash), false)
 		return
 	}
 
@@ -702,7 +702,7 @@ func (sm *SyncManager) handleBlockMsg(bmsg *blockMsg) {
 
 	// If we didn't ask for this block then the peer is misbehaving.
 	blockHash := bmsg.block.Hash()
-	if _, exists = state.requestedBlocks[*blockHash]; !exists {
+	if _, exists = state.requestedBlocks[*convert.HashToShell(blockHash)]; !exists {
 		// The regression test intentionally sends some blocks twice
 		// to test duplicate block insertion fails.  Don't disconnect
 		// the peer or ignore the block when we're in regression test
@@ -729,7 +729,7 @@ func (sm *SyncManager) handleBlockMsg(bmsg *blockMsg) {
 		firstNodeEl := sm.headerList.Front()
 		if firstNodeEl != nil {
 			firstNode := firstNodeEl.Value.(*headerNode)
-			if blockHash.IsEqual(firstNode.hash) {
+			if blockHash.IsEqual(convert.HashToBtc(firstNode.hash)) {
 				behaviorFlags |= blockchain.BFFastAdd
 				if firstNode.hash.IsEqual(sm.nextCheckpoint.Hash) {
 					isCheckpointBlock = true
@@ -743,8 +743,8 @@ func (sm *SyncManager) handleBlockMsg(bmsg *blockMsg) {
 	// Remove block from request maps. Either chain will know about it and
 	// so we shouldn't have any more instances of trying to fetch it, or we
 	// will fail the insert and thus we'll retry next time we get an inv.
-	delete(state.requestedBlocks, *blockHash)
-	delete(sm.requestedBlocks, *blockHash)
+	delete(state.requestedBlocks, *convert.HashToShell(blockHash))
+	delete(sm.requestedBlocks, *convert.HashToShell(blockHash))
 
 	// Process the block to include validation, best chain selection, orphan
 	// handling, etc.
@@ -769,7 +769,7 @@ func (sm *SyncManager) handleBlockMsg(bmsg *blockMsg) {
 		// Convert the error into an appropriate reject message and
 		// send it.
 		code, reason := mempool.ErrToRejectErr(err)
-		peer.PushRejectMsg(wire.CmdBlock, code, reason, blockHash, false)
+		peer.PushRejectMsg(wire.CmdBlock, code, reason, convert.HashToShell(blockHash), false)
 		return
 	}
 
@@ -793,7 +793,15 @@ func (sm *SyncManager) handleBlockMsg(bmsg *blockMsg) {
 		// Extraction is only attempted if the block's version is
 		// high enough (ver 2+).
 		header := &bmsg.block.MsgBlock().Header
-		if blockchain.ShouldHaveSerializedBlockHeight(header) {
+		shellHeader := &wire.BlockHeader{
+			Version:    header.Version,
+			PrevBlock:  *convert.HashToShell(&header.PrevBlock),
+			MerkleRoot: *convert.HashToShell(&header.MerkleRoot),
+			Timestamp:  header.Timestamp,
+			Bits:       header.Bits,
+			Nonce:      header.Nonce,
+		}
+		if blockchain.ShouldHaveSerializedBlockHeight(shellHeader) {
 			coinbaseTx := bmsg.block.Transactions()[0]
 			cbHeight, err := blockchain.ExtractCoinbaseHeight(coinbaseTx)
 			if err != nil {
@@ -803,11 +811,11 @@ func (sm *SyncManager) handleBlockMsg(bmsg *blockMsg) {
 				log.Debugf("Extracted height of %v from "+
 					"orphan block", cbHeight)
 				heightUpdate = cbHeight
-				blkHashUpdate = blockHash
+				blkHashUpdate = convert.HashToShell(blockHash)
 			}
 		}
 
-		orphanRoot := sm.chain.GetOrphanRoot(blockHash)
+		orphanRoot := sm.chain.GetOrphanRoot(convert.HashToShell(blockHash))
 		locator, err := sm.chain.LatestBlockLocator()
 		if err != nil {
 			log.Warnf("Failed to get block locator for the "+
@@ -894,7 +902,7 @@ func (sm *SyncManager) handleBlockMsg(bmsg *blockMsg) {
 	sm.headersFirstMode = false
 	sm.headerList.Init()
 	log.Infof("Reached the final checkpoint -- switching to normal mode")
-	locator := blockchain.BlockLocator([]*chainhash.Hash{blockHash})
+	locator := blockchain.BlockLocator([]*chainhash.Hash{convert.HashToShell(blockHash)})
 	err = peer.PushGetBlocksMsg(locator, &zeroHash)
 	if err != nil {
 		log.Warnf("Failed to send getblocks message to peer %s: %v",
@@ -1003,7 +1011,7 @@ func (sm *SyncManager) handleHeadersMsg(hmsg *headersMsg) {
 		// add it to the list of headers.
 		node := headerNode{hash: &blockHash}
 		prevNode := prevNodeEl.Value.(*headerNode)
-		if prevNode.hash.IsEqual(convert.HashToBtc(&blockHeader.PrevBlock)) {
+		if prevNode.hash.IsEqual(&blockHeader.PrevBlock) {
 			node.height = prevNode.height + 1
 			e := sm.headerList.PushBack(&node)
 			if sm.startHeader == nil {
@@ -1456,7 +1464,7 @@ func (sm *SyncManager) handleBlockchainNotification(notification *blockchain.Not
 
 		// Generate the inventory vector and relay it.
 		iv := wire.NewInvVect(wire.InvTypeBlock, convert.HashToShell(block.Hash()))
-		sm.peerNotifier.RelayInventory(iv, block.MsgBlock().Header)
+		sm.peerNotifier.RelayInventory(iv, &block.MsgBlock().Header)
 
 	// A block has been connected to the main block chain.
 	case blockchain.NTBlockConnected:

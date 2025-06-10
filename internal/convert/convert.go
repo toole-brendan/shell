@@ -33,19 +33,20 @@ func HashToBtc(hash *shellchainhash.Hash) *btcchainhash.Hash {
 }
 
 // OutPointToShell converts a btcsuite wire.OutPoint to a shell wire.OutPoint
-func OutPointToShell(op btcwire.OutPoint) shellwire.OutPoint {
-	return shellwire.OutPoint{
-		Hash:  *HashToShell(&op.Hash),
-		Index: op.Index,
+func OutPointToShell(outpoint btcwire.OutPoint) wire.OutPoint {
+	return wire.OutPoint{
+		Hash:  HashToShellValue(outpoint.Hash),
+		Index: outpoint.Index,
 	}
 }
 
-// OutPointPtrToShell converts a btcsuite wire.OutPoint pointer to a shell wire.OutPoint
-func OutPointPtrToShell(op *btcwire.OutPoint) shellwire.OutPoint {
+// OutPointToShellPointer converts a btcsuite wire.OutPoint pointer to a shell wire.OutPoint pointer
+func OutPointToShellPointer(op *btcwire.OutPoint) *wire.OutPoint {
 	if op == nil {
-		return shellwire.OutPoint{}
+		return nil
 	}
-	return OutPointToShell(*op)
+	shellOutpoint := OutPointToShell(*op)
+	return &shellOutpoint
 }
 
 // OutPointToBtc converts a shell wire.OutPoint to a btcsuite wire.OutPoint
@@ -449,4 +450,156 @@ func ToShellMsgTx(tx *btcwire.MsgTx) *wire.MsgTx {
 		TxOut:    shellTxOuts,
 		LockTime: tx.LockTime,
 	}
+}
+
+func HashToBtcd(hash *shellchainhash.Hash) *btcchainhash.Hash {
+	if hash == nil {
+		return nil
+	}
+	var bhash btcchainhash.Hash
+	copy(bhash[:], hash[:])
+	return &bhash
+}
+
+func ToBtcdOutPoint(out *wire.OutPoint) *btcwire.OutPoint {
+	if out == nil {
+		return nil
+	}
+
+	return &btcwire.OutPoint{
+		Hash:  *HashToBtcd(&out.Hash),
+		Index: out.Index,
+	}
+}
+
+func ToBtcdTxIn(txIn *wire.TxIn) *btcwire.TxIn {
+	if txIn == nil {
+		return nil
+	}
+
+	witness := make([][]byte, len(txIn.Witness))
+	for i, w := range txIn.Witness {
+		witness[i] = make([]byte, len(w))
+		copy(witness[i], w)
+	}
+
+	return &btcwire.TxIn{
+		PreviousOutPoint: *ToBtcdOutPoint(&txIn.PreviousOutPoint),
+		SignatureScript:  txIn.SignatureScript,
+		Witness:          witness,
+		Sequence:         txIn.Sequence,
+	}
+}
+
+func ToBtcdTxOut(txOut *wire.TxOut) *btcwire.TxOut {
+	if txOut == nil {
+		return nil
+	}
+
+	return &btcwire.TxOut{
+		Value:    txOut.Value,
+		PkScript: txOut.PkScript,
+	}
+}
+
+func ToBtcdMsgBlock(block *wire.MsgBlock) *btcwire.MsgBlock {
+	if block == nil {
+		return nil
+	}
+
+	transactions := make([]*btcwire.MsgTx, len(block.Transactions))
+	for i, tx := range block.Transactions {
+		transactions[i] = ToBtcdMsgTx(tx)
+	}
+
+	return &btcwire.MsgBlock{
+		Header:       *ToBtcdBlockHeader(&block.Header),
+		Transactions: transactions,
+	}
+}
+
+func ToBtcdBlockHeader(header *wire.BlockHeader) *btcwire.BlockHeader {
+	if header == nil {
+		return nil
+	}
+
+	return &btcwire.BlockHeader{
+		Version:    header.Version,
+		PrevBlock:  *HashToBtcd(&header.PrevBlock),
+		MerkleRoot: *HashToBtcd(&header.MerkleRoot),
+		Timestamp:  header.Timestamp,
+		Bits:       header.Bits,
+		Nonce:      header.Nonce,
+	}
+}
+
+func ToBtcdMsgTx(tx *wire.MsgTx) *btcwire.MsgTx {
+	if tx == nil {
+		return nil
+	}
+
+	shellTxIns := make([]*btcwire.TxIn, len(tx.TxIn))
+	for i, txIn := range tx.TxIn {
+		shellTxIns[i] = ToBtcdTxIn(txIn)
+	}
+
+	shellTxOuts := make([]*btcwire.TxOut, len(tx.TxOut))
+	for i, txOut := range tx.TxOut {
+		shellTxOuts[i] = ToBtcdTxOut(txOut)
+	}
+
+	return &btcwire.MsgTx{
+		Version:  tx.Version,
+		TxIn:     shellTxIns,
+		TxOut:    shellTxOuts,
+		LockTime: tx.LockTime,
+	}
+}
+
+func HashToShellValue(hash btcchainhash.Hash) shellchainhash.Hash {
+	var shash shellchainhash.Hash
+	copy(shash[:], hash[:])
+	return shash
+}
+
+func ToShellMsgBlock(block *btcwire.MsgBlock) *wire.MsgBlock {
+	if block == nil {
+		return nil
+	}
+	shellTxs := make([]*wire.MsgTx, len(block.Transactions))
+	for i, tx := range block.Transactions {
+		shellTxs[i] = ToShellMsgTx(tx)
+	}
+	return &wire.MsgBlock{
+		Header:       *ToShellBlockHeader(&block.Header),
+		Transactions: shellTxs,
+	}
+}
+
+// NewBlockFromShellMsgBlock creates a new btcutil.Block from a shell wire.MsgBlock
+func NewBlockFromShellMsgBlock(msgBlock *shellwire.MsgBlock) *btcutil.Block {
+	// Convert shell MsgBlock to btcsuite MsgBlock
+	btcMsgBlock := &btcwire.MsgBlock{
+		Header: btcwire.BlockHeader{
+			Version:    msgBlock.Header.Version,
+			PrevBlock:  *HashToBtc(&msgBlock.Header.PrevBlock),
+			MerkleRoot: *HashToBtc(&msgBlock.Header.MerkleRoot),
+			Timestamp:  msgBlock.Header.Timestamp,
+			Bits:       msgBlock.Header.Bits,
+			Nonce:      msgBlock.Header.Nonce,
+		},
+		Transactions: make([]*btcwire.MsgTx, len(msgBlock.Transactions)),
+	}
+
+	for i, tx := range msgBlock.Transactions {
+		btcMsgBlock.Transactions[i] = MsgTxToBtc(tx)
+	}
+
+	return btcutil.NewBlock(btcMsgBlock)
+}
+
+// Convert btcutil.Block to shell types by creating a copy
+func NewShellBlockFromBtcBlock(block *btcutil.Block) *btcutil.Block {
+	shellMsgBlock := ToShellMsgBlock(block.MsgBlock())
+	return NewBlockFromShellMsgBlock(shellMsgBlock)
 }

@@ -10,6 +10,7 @@ import (
 
 	"github.com/toole-brendan/shell/blockchain"
 	"github.com/toole-brendan/shell/chaincfg/chainhash"
+	"github.com/toole-brendan/shell/internal/convert"
 	"github.com/toole-brendan/shell/wire"
 )
 
@@ -157,7 +158,7 @@ func TestCalcPriority(t *testing.T) {
 	}
 
 	for i, test := range tests {
-		got := CalcPriority(test.tx, test.utxoView, test.nextHeight)
+		got := CalcPriority(convert.MsgTxToBtc(test.tx), test.utxoView, test.nextHeight)
 		if got != test.want {
 			t.Errorf("CalcPriority #%d (%q): unexpected priority "+
 				"got %v want %v", i, test.name, got, test.want)

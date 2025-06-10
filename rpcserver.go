@@ -565,7 +565,7 @@ func handleCreateRawTransaction(s *rpcServer, cmd interface{}, closeChan <-chan 
 		}
 
 		// Decode the provided address.
-		addr, err := btcutil.DecodeAddress(encodedAddr, params)
+		addr, err := btcutil.DecodeAddress(encodedAddr, convert.ParamsToBtc(params.Name))
 		if err != nil {
 			return nil, &btcjson.RPCError{
 				Code:    btcjson.ErrRPCInvalidAddressOrKey,
@@ -585,7 +585,7 @@ func handleCreateRawTransaction(s *rpcServer, cmd interface{}, closeChan <-chan 
 				Message: "Invalid address or key",
 			}
 		}
-		if !addr.IsForNet(params) {
+		if !addr.IsForNet(convert.ParamsToBtc(params.Name)) {
 			return nil, &btcjson.RPCError{
 				Code: btcjson.ErrRPCInvalidAddressOrKey,
 				Message: "Invalid address: " + encodedAddr +
@@ -1127,7 +1127,7 @@ func handleGetBlock(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (i
 	}
 
 	params := s.cfg.ChainParams
-	blockHeader := &blk.MsgBlock().Header
+	blockHeader := blk.MsgBlock().Header
 	blockReply := btcjson.GetBlockVerboseResult{
 		Hash:          c.Hash,
 		Version:       blockHeader.Version,
@@ -1140,7 +1140,7 @@ func handleGetBlock(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (i
 		Height:        int64(blockHeight),
 		Size:          int32(len(blkBytes)),
 		StrippedSize:  int32(blk.MsgBlock().SerializeSizeStripped()),
-		Weight:        int32(blockchain.GetBlockWeight(blk)),
+		Weight:        int32(blockchain.GetBlockWeight(convert.NewShellBlockFromBtcBlock(blk))),
 		Bits:          strconv.FormatInt(int64(blockHeader.Bits), 16),
 		Difficulty:    getDifficultyRatio(blockHeader.Bits, params),
 		NextHash:      nextHashString,
@@ -1158,8 +1158,8 @@ func handleGetBlock(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (i
 		txns := blk.Transactions()
 		rawTxns := make([]btcjson.TxRawResult, len(txns))
 		for i, tx := range txns {
-			rawTxn, err := createTxRawResult(params, tx.MsgTx(),
-				tx.Hash().String(), blockHeader, hash.String(),
+			rawTxn, err := createTxRawResult(params, convert.ToShellMsgTx(tx.MsgTx()),
+				tx.Hash().String(), convert.ToShellBlockHeader(&blk.MsgBlock().Header), hash.String(),
 				blockHeight, best.Height)
 			if err != nil {
 				return nil, err
@@ -2153,7 +2153,7 @@ func handleGetBlockTemplateProposal(s *rpcServer, request *btcjson.TemplateReque
 	// Ensure the block is building from the expected previous block.
 	expectedPrevHash := s.cfg.Chain.BestSnapshot().Hash
 	prevHash := &block.MsgBlock().Header.PrevBlock
-	if !expectedPrevHash.IsEqual(prevHash) {
+	if !expectedPrevHash.IsEqual(convert.HashToShell(prevHash)) {
 		return "bad-prevblk", nil
 	}
 
@@ -2705,14 +2705,14 @@ func handleGetRawTransaction(s *rpcServer, cmd interface{}, closeChan <-chan str
 			// string and it would result in returning an empty
 			// string to the client instead of nothing (nil) in the
 			// case of an error.
-			mtxHex, err := messageToHex(tx.MsgTx())
+			mtxHex, err := messageToHex(convert.ToShellMsgTx(tx.MsgTx()))
 			if err != nil {
 				return nil, err
 			}
 			return mtxHex, nil
 		}
 
-		mtx = tx.MsgTx()
+		mtx = convert.ToShellMsgTx(tx.MsgTx())
 	}
 
 	// The verbose flag is set, so generate the JSON object and return it.
@@ -2791,7 +2791,7 @@ func handleGetTxOut(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (i
 		confirmations = 0
 		value = txOut.Value
 		pkScript = txOut.PkScript
-		isCoinbase = blockchain.IsCoinBaseTx(mtx)
+		isCoinbase = blockchain.IsCoinBaseTx(convert.ToShellMsgTx(mtx))
 	} else {
 		out := wire.OutPoint{Hash: *txHash, Index: c.Vout}
 		entry, err := s.cfg.Chain.FetchUtxoEntry(out)
@@ -2958,7 +2958,7 @@ func fetchInputTxos(s *rpcServer, tx *wire.MsgTx) (map[wire.OutPoint]wire.TxOut,
 				return nil, internalRPCError(errStr, "")
 			}
 
-			originOutputs[*origin] = *txOuts[origin.Index]
+			originOutputs[*origin] = *convert.ToShellTxOut(txOuts[origin.Index])
 			continue
 		}
 
@@ -3195,7 +3195,7 @@ func handleSearchRawTransactions(s *rpcServer, cmd interface{}, closeChan <-chan
 
 	// Attempt to decode the supplied address.
 	params := s.cfg.ChainParams
-	addr, err := btcutil.DecodeAddress(c.Address, params)
+	addr, err := btcutil.DecodeAddress(c.Address, convert.ParamsToBtc(params.Name))
 	if err != nil {
 		return nil, &btcjson.RPCError{
 			Code:    btcjson.ErrRPCInvalidAddressOrKey,
@@ -3329,7 +3329,7 @@ func handleSearchRawTransactions(s *rpcServer, cmd interface{}, closeChan <-chan
 
 		// Serialize the transaction first and convert to hex when the
 		// retrieved transaction is the deserialized structure.
-		hexTxns[i], err = messageToHex(rtx.tx.MsgTx())
+		hexTxns[i], err = messageToHex(convert.ToShellMsgTx(rtx.tx.MsgTx()))
 		if err != nil {
 			return nil, err
 		}
@@ -3369,7 +3369,7 @@ func handleSearchRawTransactions(s *rpcServer, cmd interface{}, closeChan <-chan
 					context)
 			}
 		} else {
-			mtx = rtx.tx.MsgTx()
+			mtx = convert.ToShellMsgTx(rtx.tx.MsgTx())
 		}
 
 		result := &srtList[i]
@@ -3450,7 +3450,7 @@ func handleSendRawTransaction(s *rpcServer, cmd interface{}, closeChan <-chan st
 
 	// Use 0 for the tag to represent local node.
 	tx := convert.NewShellTx(&msgTx)
-	acceptedTxs, err := s.cfg.TxMemPool.ProcessTransaction(tx, false, false, 0)
+	acceptedTxs, err := s.cfg.TxMemPool.ProcessTransaction(tx, false, false, mempool.Tag(0))
 	if err != nil {
 		// When the error is a rule error, it means the transaction was
 		// simply rejected as opposed to something actually going wrong,
@@ -3503,8 +3503,8 @@ func handleSendRawTransaction(s *rpcServer, cmd interface{}, closeChan <-chan st
 	//
 	// Also, since an error is being returned to the caller, ensure the
 	// transaction is removed from the memory pool.
-	if len(acceptedTxs) == 0 || !acceptedTxs[0].Tx.Hash().IsEqual(convert.HashToShell(tx.Hash())) {
-		s.cfg.TxMemPool.RemoveTransaction(tx, true)
+	if len(acceptedTxs) == 0 || !acceptedTxs[0].Tx.Hash().IsEqual(tx.Hash()) {
+		s.cfg.TxMemPool.RemoveTransaction(acceptedTxs[0].Tx, true)
 
 		errStr := fmt.Sprintf("transaction %v is not in accepted list",
 			convert.HashToShell(tx.Hash()))
@@ -3587,7 +3587,7 @@ func handleSignMessageWithPrivKey(s *rpcServer, cmd interface{}, closeChan <-cha
 			Message: message,
 		}
 	}
-	if !wif.IsForNet(s.cfg.ChainParams) {
+	if !wif.IsForNet(convert.ParamsToBtc(s.cfg.ChainParams.Name)) {
 		return nil, &btcjson.RPCError{
 			Code:    btcjson.ErrRPCInvalidAddressOrKey,
 			Message: "Private key for wrong network",
@@ -3656,7 +3656,7 @@ func handleValidateAddress(s *rpcServer, cmd interface{}, closeChan <-chan struc
 	c := cmd.(*btcjson.ValidateAddressCmd)
 
 	result := btcjson.ValidateAddressChainResult{}
-	addr, err := btcutil.DecodeAddress(c.Address, s.cfg.ChainParams)
+	addr, err := btcutil.DecodeAddress(c.Address, convert.ParamsToBtc(s.cfg.ChainParams.Name))
 	if err != nil {
 		// Return the default value (false) for IsValid.
 		return result, nil
@@ -3756,7 +3756,7 @@ func handleVerifyMessage(s *rpcServer, cmd interface{}, closeChan <-chan struct{
 
 	// Decode the provided address.
 	params := s.cfg.ChainParams
-	addr, err := btcutil.DecodeAddress(c.Address, params)
+	addr, err := btcutil.DecodeAddress(c.Address, convert.ParamsToBtc(params.Name))
 	if err != nil {
 		return nil, &btcjson.RPCError{
 			Code:    btcjson.ErrRPCInvalidAddressOrKey,
@@ -3802,7 +3802,7 @@ func handleVerifyMessage(s *rpcServer, cmd interface{}, closeChan <-chan struct{
 	} else {
 		serializedPK = pk.SerializeUncompressed()
 	}
-	address, err := btcutil.NewAddressPubKey(serializedPK, convert.ParamsToBtc(params))
+	address, err := btcutil.NewAddressPubKey(serializedPK, convert.ParamsToBtc(params.Name))
 	if err != nil {
 		// Again mirror Bitcoin Core behavior, which treats error in public key
 		// reconstruction as invalid signature.
@@ -3864,7 +3864,7 @@ func handleTestMempoolAccept(s *rpcServer, cmd interface{},
 		}
 
 		// Check the mempool acceptance.
-		result, err := s.cfg.TxMemPool.CheckMempoolAcceptance(tx)
+		result, err := s.cfg.TxMemPool.CheckMempoolAcceptance(convert.NewShellTx(convert.ToShellMsgTx(tx.MsgTx())))
 
 		// If an error is returned, this tx is not allow, hence we
 		// record the reason.
@@ -4738,7 +4738,6 @@ type rpcserverConnManager interface {
 
 	// ConnectedPeers returns an array consisting of all connected peers.
 	ConnectedPeers() []rpcserverPeer
-
 	// PersistentPeers returns an array consisting of all the persistent
 	// peers.
 	PersistentPeers() []rpcserverPeer
@@ -4817,7 +4816,7 @@ type rpcserverConfig struct {
 	DB          database.DB
 
 	// TxMemPool defines the transaction memory pool to interact with.
-	TxMemPool mempool.TxMempool
+	TxMemPool *mempool.TxPool
 
 	// These fields allow the RPC server to interface with mining.
 	//

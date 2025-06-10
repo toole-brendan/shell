@@ -15,10 +15,6 @@ import (
 	"sync"
 
 	"github.com/btcsuite/btcd/btcutil"
-	"github.com/toole-brendan/shell/chaincfg/chainhash"
-	"github.com/toole-brendan/shell/database"
-	"github.com/toole-brendan/shell/database/internal/treap"
-	"github.com/toole-brendan/shell/wire"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/comparer"
 	ldberrors "github.com/syndtr/goleveldb/leveldb/errors"
@@ -26,6 +22,11 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 	"github.com/syndtr/goleveldb/leveldb/opt"
 	"github.com/syndtr/goleveldb/leveldb/util"
+	"github.com/toole-brendan/shell/chaincfg/chainhash"
+	"github.com/toole-brendan/shell/database"
+	"github.com/toole-brendan/shell/database/internal/treap"
+	"github.com/toole-brendan/shell/internal/convert"
+	"github.com/toole-brendan/shell/wire"
 )
 
 const (
@@ -1164,7 +1165,8 @@ func (tx *transaction) StoreBlock(block *btcutil.Block) error {
 
 	// Reject the block if it already exists.
 	blockHash := block.Hash()
-	if tx.hasBlock(blockHash) {
+	shellBlockHash := convert.HashToShell(blockHash)
+	if tx.hasBlock(shellBlockHash) {
 		str := fmt.Sprintf("block %s already exists", blockHash)
 		return makeDbErr(database.ErrBlockExists, str, nil)
 	}
@@ -1183,9 +1185,9 @@ func (tx *transaction) StoreBlock(block *btcutil.Block) error {
 	if tx.pendingBlocks == nil {
 		tx.pendingBlocks = make(map[chainhash.Hash]int)
 	}
-	tx.pendingBlocks[*blockHash] = len(tx.pendingBlockData)
+	tx.pendingBlocks[*shellBlockHash] = len(tx.pendingBlockData)
 	tx.pendingBlockData = append(tx.pendingBlockData, pendingBlock{
-		hash:  blockHash,
+		hash:  shellBlockHash,
 		bytes: blockBytes,
 	})
 	log.Tracef("Added block %s to pending blocks", blockHash)
