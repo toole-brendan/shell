@@ -291,9 +291,94 @@ func (lm *LiquidityManager) verifyMerkleProof(leaf chainhash.Hash, proof []chain
 
 // parseAttestationBlob extracts attestation from binary blob
 func (lm *LiquidityManager) parseAttestationBlob(blob []byte) (*LiquidityAttestation, error) {
-	// TODO: Implement proper binary deserialization
-	// For now, return a placeholder
-	return &LiquidityAttestation{}, errors.New("attestation parsing not yet implemented")
+	if len(blob) < 49 { // Minimum size: 1+32+8+4+2+4 = 51 bytes
+		return nil, errors.New("attestation blob too short")
+	}
+
+	offset := 0
+	attestation := &LiquidityAttestation{}
+
+	// Parse epoch index (1 byte)
+	attestation.EpochIndex = blob[offset]
+	offset++
+
+	// Parse participant ID (32 bytes)
+	copy(attestation.ParticipantID[:], blob[offset:offset+32])
+	offset += 32
+
+	// Parse volume (8 bytes, little endian)
+	attestation.Volume = binary.LittleEndian.Uint64(blob[offset : offset+8])
+	offset += 8
+
+	// Parse spread (4 bytes, little endian)
+	attestation.Spread = binary.LittleEndian.Uint32(blob[offset : offset+4])
+	offset += 4
+
+	// Parse uptime (2 bytes, little endian)
+	attestation.Uptime = binary.LittleEndian.Uint16(blob[offset : offset+2])
+	offset += 2
+
+	// Parse timestamp (4 bytes, little endian)
+	attestation.Timestamp = binary.LittleEndian.Uint32(blob[offset : offset+4])
+	offset += 4
+
+	// Parse number of signatures (1 byte)
+	if offset >= len(blob) {
+		return nil, errors.New("missing signature count")
+	}
+	sigCount := blob[offset]
+	offset++
+
+	if sigCount > 5 { // Max 5 attestors
+		return nil, errors.New("too many signatures")
+	}
+
+	// Parse signatures (each is 64 bytes: 32 byte R + 32 byte S)
+	attestation.AttestorSigs = make([]ecdsa.Signature, sigCount)
+	for i := 0; i < int(sigCount); i++ {
+		if offset+64 > len(blob) {
+			return nil, fmt.Errorf("incomplete signature %d", i)
+		}
+
+		// Parse R value (32 bytes)
+		rBytes := blob[offset : offset+32]
+		offset += 32
+
+		// Parse S value (32 bytes)
+		sBytes := blob[offset : offset+32]
+		offset += 32
+
+		// Convert bytes to ModNScalar and create signature
+		var rScalar, sScalar btcec.ModNScalar
+		rScalar.SetByteSlice(rBytes)
+		sScalar.SetByteSlice(sBytes)
+
+		attestation.AttestorSigs[i] = *ecdsa.NewSignature(&rScalar, &sScalar)
+	}
+
+	// Parse merkle proof length (2 bytes, little endian)
+	if offset+2 > len(blob) {
+		return nil, errors.New("missing merkle proof length")
+	}
+	proofLen := binary.LittleEndian.Uint16(blob[offset : offset+2])
+	offset += 2
+
+	if proofLen > 32 { // Reasonable max depth
+		return nil, errors.New("merkle proof too deep")
+	}
+
+	// Parse merkle proof (each hash is 32 bytes)
+	attestation.MerkleProof = make([]chainhash.Hash, proofLen)
+	for i := 0; i < int(proofLen); i++ {
+		if offset+32 > len(blob) {
+			return nil, fmt.Errorf("incomplete merkle proof hash %d", i)
+		}
+
+		copy(attestation.MerkleProof[i][:], blob[offset:offset+32])
+		offset += 32
+	}
+
+	return attestation, nil
 }
 
 // FinalizeEpoch computes final rewards for an epoch

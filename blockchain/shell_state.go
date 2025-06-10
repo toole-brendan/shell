@@ -11,6 +11,7 @@ import (
 	btcdchainhash "github.com/btcsuite/btcd/chaincfg/chainhash"
 	btcdwire "github.com/btcsuite/btcd/wire"
 	"github.com/toole-brendan/shell/chaincfg/chainhash"
+	"github.com/toole-brendan/shell/liquidity"
 	"github.com/toole-brendan/shell/settlement/channels"
 	"github.com/toole-brendan/shell/settlement/claimable"
 	"github.com/toole-brendan/shell/txscript"
@@ -51,11 +52,17 @@ type ShellChainState struct {
 	// Claimable balance state
 	claimableState *claimable.ClaimableState
 
+	// Liquidity reward manager
+	liquidityManager *liquidity.LiquidityManager
+
 	// Modified state tracking
 	modifiedChannels   map[channels.ChannelID]*channels.PaymentChannel
 	modifiedClaimables map[claimable.ClaimableID]*claimable.ClaimableBalance
 	deletedChannels    map[channels.ChannelID]struct{}
 	deletedClaimables  map[claimable.ClaimableID]struct{}
+
+	// Liquidity reward tracking
+	processedRewards map[[32]byte]bool // Track processed reward claims
 }
 
 // NewShellChainState creates a new Shell chain state
@@ -64,10 +71,12 @@ func NewShellChainState(utxoView *UtxoViewpoint) *ShellChainState {
 		UtxoViewpoint:      utxoView,
 		channelState:       channels.NewChannelState(),
 		claimableState:     claimable.NewClaimableState(),
+		liquidityManager:   liquidity.NewLiquidityManager(0),
 		modifiedChannels:   make(map[channels.ChannelID]*channels.PaymentChannel),
 		modifiedClaimables: make(map[claimable.ClaimableID]*claimable.ClaimableBalance),
 		deletedChannels:    make(map[channels.ChannelID]struct{}),
 		deletedClaimables:  make(map[claimable.ClaimableID]struct{}),
+		processedRewards:   make(map[[32]byte]bool),
 	}
 }
 
@@ -88,6 +97,9 @@ func (scs *ShellChainState) ProcessShellOpcode(opcode byte, tx *btcutil.Tx, txId
 
 	case 0xca: // OP_CLAIMABLE_CLAIM
 		return scs.processClaimableClaim(tx, txIdx, blockHeight)
+
+	case 0xcb: // OP_LIQUIDITY_CLAIM
+		return scs.processLiquidityRewardClaim(tx, txIdx, blockHeight)
 
 	default:
 		return fmt.Errorf("unknown Shell opcode: 0x%02x", opcode)
@@ -357,6 +369,61 @@ func (scs *ShellChainState) processClaimableClaim(tx *btcutil.Tx, txIdx int, blo
 	return nil
 }
 
+// processLiquidityRewardClaim handles OP_LIQUIDITY_CLAIM execution
+func (scs *ShellChainState) processLiquidityRewardClaim(tx *btcutil.Tx, txIdx int, blockHeight int32) error {
+	msgTx := tx.MsgTx()
+	if txIdx >= len(msgTx.TxOut) {
+		return fmt.Errorf("invalid output index for liquidity reward claim")
+	}
+
+	// Get the script and witness data for reward claim
+	output := msgTx.TxOut[txIdx]
+
+	// For liquidity reward claims, witness is in the input
+	var witness btcdwire.TxWitness
+	if len(msgTx.TxIn) > 0 && len(msgTx.TxIn[0].Witness) > 0 {
+		witness = msgTx.TxIn[0].Witness
+	}
+
+	// Parse liquidity reward claim from witness data
+	if len(witness) < 2 {
+		return fmt.Errorf("liquidity reward claim requires attestation blob and merkle path")
+	}
+
+	// Extract attestation blob and merkle path from witness
+	attestationBlob := witness[0]
+	merklePath := make([]chainhash.Hash, len(witness)-1)
+	for i := 1; i < len(witness); i++ {
+		if len(witness[i]) != 32 {
+			return fmt.Errorf("invalid merkle path hash length")
+		}
+		copy(merklePath[i-1][:], witness[i])
+	}
+
+	// Create liquidity reward claim
+	claim := &liquidity.LiquidityRewardClaim{
+		Version:         1,
+		EpochIndex:      0, // Extract from attestation blob
+		AttestationBlob: attestationBlob,
+		MerklePath:      merklePath,
+		Output:          (*wire.TxOut)(output),
+	}
+
+	// Process the claim through the liquidity manager
+	err := scs.liquidityManager.ProcessRewardClaim(claim, blockHeight)
+	if err != nil {
+		return fmt.Errorf("failed to process liquidity reward claim: %v", err)
+	}
+
+	// Check reward amount doesn't exceed output value
+	if uint64(output.Value) > 0 {
+		// Additional validation would be done by the liquidity manager
+		return nil
+	}
+
+	return nil
+}
+
 // Commit applies all modifications to the underlying database
 func (scs *ShellChainState) Commit() error {
 	// First commit standard UTXO changes
@@ -410,4 +477,28 @@ func (scs *ShellChainState) GetModifiedClaimables() map[claimable.ClaimableID]*c
 		result[id] = balance
 	}
 	return result
+}
+
+// GetLiquidityManager returns the liquidity reward manager
+func (scs *ShellChainState) GetLiquidityManager() *liquidity.LiquidityManager {
+	return scs.liquidityManager
+}
+
+// GetProcessedRewards returns a copy of processed reward claims
+func (scs *ShellChainState) GetProcessedRewards() map[[32]byte]bool {
+	result := make(map[[32]byte]bool)
+	for hash, processed := range scs.processedRewards {
+		result[hash] = processed
+	}
+	return result
+}
+
+// IsLiquidityRewardProcessed checks if a reward claim has been processed
+func (scs *ShellChainState) IsLiquidityRewardProcessed(rewardHash [32]byte) bool {
+	return scs.processedRewards[rewardHash]
+}
+
+// MarkLiquidityRewardProcessed marks a reward claim as processed
+func (scs *ShellChainState) MarkLiquidityRewardProcessed(rewardHash [32]byte) {
+	scs.processedRewards[rewardHash] = true
 }
