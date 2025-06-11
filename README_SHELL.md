@@ -153,6 +153,12 @@ This is the **Phase α (Core Chain)** implementation - **PHASE α COMPLETE!**
 3. **Phase β.5** (Months 5-6): ✅ L1 Settlement primitives - **COMPLETE!** 🚀
 
 4. **Phase γ** (Months 6-9): 🚧 Security hardening & vault covenants - **READY TO BEGIN!** ✨
+   - γ.1: 🚧 **Advanced Vault Covenants** - Production-grade multi-signature custody
+   - γ.2: 🚧 **Complete MuSig2 Implementation** - Full aggregated signature protocol
+   - γ.3: 🚧 **AuxPoW Integration** - Bitcoin merge mining for initial security
+   - γ.4: 🚧 **Fast-Sync Infrastructure** - Compact filters and UTXO snapshots
+   - γ.5: 🚧 **Security Audits** - 3 independent security reviews
+   - γ.6: 🚧 **Formal Verification** - Mathematical proof of critical components
 5. **Phase δ** (Months 9-12): 🕒 Launch preparation
 
 ## 🔗 Related Documents
@@ -498,11 +504,121 @@ go build .  # <-- WORKS! All core chain + liquidity infrastructure + settlement 
 *Built to last, not to impress - now with professional market making infrastructure.*
 
 **Next Phase: γ Security Hardening** 🛡️
-- Formal verification of critical components
-- Security audits from 3 independent firms  
-- Production readiness testing
-- Performance optimization
-- Vault covenant security hardening
+
+### Phase γ.1: Advanced Vault Covenants (Weeks 25-28)
+🎯 **Goal**: Production-grade institutional custody with complex multi-signature policies
+
+**Key Deliverables**:
+- **Enhanced Vault Templates**: Support for complex institutional policies
+- **Time-Lock Hierarchies**: Multiple time delays (hot, warm, cold, emergency)
+- **Policy Composition**: AND/OR/NOT logic for spending conditions
+- **Vault Inheritance**: Automatic policy transitions over time
+- **Emergency Recovery**: Disaster recovery protocols
+
+```bash
+# Implementation tasks for γ.1:
+cd covenants/vault
+# 1. Enhanced vault template system
+# 2. Complex policy scripting (beyond 11-of-15/3-of-5)
+# 3. Time-lock cascade implementation
+# 4. Emergency recovery mechanisms
+# 5. Vault policy testing framework
+```
+
+### Phase γ.2: Complete MuSig2 Implementation (Weeks 29-32) 
+🎯 **Goal**: Full production MuSig2 with parallel signing sessions
+
+**Key Deliverables**:
+- **Parallel Signing**: Independent signature generation
+- **Signature Aggregation**: Efficient multi-party protocols
+- **Fault Tolerance**: Handle signing failures gracefully
+- **Hardware Security Module (HSM) Integration**: Support for institutional HSMs
+- **Performance Optimization**: Large signature group efficiency
+
+```bash
+# Implementation tasks for γ.2:
+cd crypto/musig2
+# 1. Complete MuSig2 protocol implementation
+# 2. Parallel signing session management
+# 3. HSM integration layer
+# 4. Performance benchmarking
+# 5. Multi-party testing framework
+```
+
+### Phase γ.3: AuxPoW Integration (Weeks 33-34)
+🎯 **Goal**: Bitcoin merge mining for initial network security
+
+**Key Deliverables**:
+- **Merge Mining Protocol**: Bitcoin AuxPoW validation
+- **Transition Management**: Smooth migration to native mining
+- **Security Monitoring**: Hashrate tracking and alerts
+- **Sunset Mechanism**: Automatic AuxPoW disabling
+
+```bash
+# Implementation tasks for γ.3:
+cd mining/auxpow
+# 1. AuxPoW block validation
+# 2. Bitcoin coinbase commitment verification
+# 3. Merge mining incentive structure
+# 4. Transition monitoring system
+# 5. Sunset activation logic
+```
+
+### Phase γ.4: Fast-Sync Infrastructure (Weeks 35-36)
+🎯 **Goal**: Rapid node synchronization for institutional deployment
+
+**Key Deliverables**:
+- **Compact Block Filters**: BIP-158 style with confidential transaction support
+- **UTXO Snapshots**: Cryptographically verified state snapshots
+- **Incremental Sync**: Fast updates from snapshots
+- **Multi-Implementation**: Support for different node software
+
+```bash
+# Implementation tasks for γ.4:
+cd sync/fastSync
+# 1. Compact filter implementation with CT support
+# 2. UTXO snapshot generation and verification
+# 3. AssumeUTXO integration
+# 4. Snapshot signature verification (3+ maintainers)
+# 5. Fast-sync testing framework
+```
+
+### Phase γ.5: Security Audits (Weeks 25-36, Parallel)
+🎯 **Goal**: Independent security validation from 3+ firms
+
+**Key Deliverables**:
+- **Code Audits**: Line-by-line security review
+- **Cryptographic Review**: Formal analysis of crypto primitives
+- **Economic Analysis**: Game theory and incentive validation
+- **Penetration Testing**: Real-world attack simulations
+
+```bash
+# Security audit coordination:
+# 1. Trail of Bits - General security audit
+# 2. Least Authority - Cryptographic analysis
+# 3. Quantstamp - Smart contract/script security
+# 4. Internal security team - Ongoing review
+# 5. Bug bounty program launch
+```
+
+### Phase γ.6: Formal Verification (Weeks 33-36)
+🎯 **Goal**: Mathematical proofs of critical protocol properties
+
+**Key Deliverables**:
+- **Consensus Safety**: Proof of fork resistance
+- **Cryptographic Soundness**: Mathematical verification of CT/MuSig2
+- **Economic Properties**: Formal game theory analysis
+- **Implementation Correctness**: Code-level formal verification
+
+```bash
+# Formal verification tasks:
+cd verification/
+# 1. TLA+ specification of consensus protocol
+# 2. Coq proofs for cryptographic primitives
+# 3. Isabelle/HOL economic model verification
+# 4. CBMC bounded model checking for C code
+# 5. Formal verification report generation
+```
 
 *Target Launch Date: January 1, 2026, 00:00 UTC*  
-*Current Status: Phase β Liquidity Stack COMPLETE - Phase γ Security Hardening READY TO BEGIN* 
+*Current Status: Phase β.5 Settlement COMPLETE - Phase γ Security Hardening READY TO BEGIN* 

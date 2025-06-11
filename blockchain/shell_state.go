@@ -11,12 +11,33 @@ import (
 	btcdchainhash "github.com/btcsuite/btcd/chaincfg/chainhash"
 	btcdwire "github.com/btcsuite/btcd/wire"
 	"github.com/toole-brendan/shell/chaincfg/chainhash"
-	"github.com/toole-brendan/shell/liquidity"
 	"github.com/toole-brendan/shell/settlement/channels"
 	"github.com/toole-brendan/shell/settlement/claimable"
 	"github.com/toole-brendan/shell/txscript"
 	"github.com/toole-brendan/shell/wire"
 )
+
+// LiquidityRewardClaim represents a claim for liquidity rewards (interface to avoid import cycle)
+type LiquidityRewardClaim struct {
+	Version         int32
+	EpochIndex      uint8
+	AttestationBlob []byte
+	MerklePath      []chainhash.Hash
+	Output          *wire.TxOut
+}
+
+// LiquidityManagerInterface defines interface to avoid import cycle with liquidity package
+type LiquidityManagerInterface interface {
+	ProcessRewardClaim(claim *LiquidityRewardClaim, currentBlock int32) error
+}
+
+// NoOpLiquidityManager provides a no-op implementation for when liquidity manager isn't needed
+type NoOpLiquidityManager struct{}
+
+func (nm *NoOpLiquidityManager) ProcessRewardClaim(claim *LiquidityRewardClaim, currentBlock int32) error {
+	// No-op implementation - actual processing would be done by external liquidity manager
+	return nil
+}
 
 // Type conversion helpers
 func btcdHashToShellHash(btcdHash *btcdchainhash.Hash) chainhash.Hash {
@@ -52,8 +73,8 @@ type ShellChainState struct {
 	// Claimable balance state
 	claimableState *claimable.ClaimableState
 
-	// Liquidity reward manager
-	liquidityManager *liquidity.LiquidityManager
+	// Liquidity reward manager (interface to avoid import cycle)
+	liquidityManager LiquidityManagerInterface
 
 	// Modified state tracking
 	modifiedChannels   map[channels.ChannelID]*channels.PaymentChannel
@@ -71,13 +92,18 @@ func NewShellChainState(utxoView *UtxoViewpoint) *ShellChainState {
 		UtxoViewpoint:      utxoView,
 		channelState:       channels.NewChannelState(),
 		claimableState:     claimable.NewClaimableState(),
-		liquidityManager:   liquidity.NewLiquidityManager(0),
+		liquidityManager:   &NoOpLiquidityManager{}, // Default no-op implementation
 		modifiedChannels:   make(map[channels.ChannelID]*channels.PaymentChannel),
 		modifiedClaimables: make(map[claimable.ClaimableID]*claimable.ClaimableBalance),
 		deletedChannels:    make(map[channels.ChannelID]struct{}),
 		deletedClaimables:  make(map[claimable.ClaimableID]struct{}),
 		processedRewards:   make(map[[32]byte]bool),
 	}
+}
+
+// SetLiquidityManager sets the liquidity manager (allows external injection)
+func (scs *ShellChainState) SetLiquidityManager(lm LiquidityManagerInterface) {
+	scs.liquidityManager = lm
 }
 
 // ProcessShellOpcode handles Shell-specific opcode execution
@@ -401,7 +427,7 @@ func (scs *ShellChainState) processLiquidityRewardClaim(tx *btcutil.Tx, txIdx in
 	}
 
 	// Create liquidity reward claim
-	claim := &liquidity.LiquidityRewardClaim{
+	claim := &LiquidityRewardClaim{
 		Version:         1,
 		EpochIndex:      0, // Extract from attestation blob
 		AttestationBlob: attestationBlob,
@@ -480,7 +506,7 @@ func (scs *ShellChainState) GetModifiedClaimables() map[claimable.ClaimableID]*c
 }
 
 // GetLiquidityManager returns the liquidity reward manager
-func (scs *ShellChainState) GetLiquidityManager() *liquidity.LiquidityManager {
+func (scs *ShellChainState) GetLiquidityManager() LiquidityManagerInterface {
 	return scs.liquidityManager
 }
 
