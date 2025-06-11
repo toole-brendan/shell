@@ -349,6 +349,22 @@ func (hs *HeterogeneousScheduler) synchronizeCores() {
 	}
 }
 
+// GetCoreState returns a state value representing current core scheduling.
+// This is used for mixing into the hash to ensure mobile-specific behavior.
+func (hs *HeterogeneousScheduler) GetCoreState() uint32 {
+	// Combine various scheduler state into a single value
+	intensity := atomic.LoadInt32(&hs.intensity)
+	activeCores := atomic.LoadInt32(&hs.activeCores)
+	tasksScheduled := atomic.LoadUint64(&hs.metricsCollector.tasksScheduled)
+
+	// Mix the values together
+	state := uint32(intensity) << 24
+	state |= uint32(activeCores) << 16
+	state |= uint32(tasksScheduled & 0xFFFF)
+
+	return state
+}
+
 // GetMetrics returns current scheduler metrics.
 func (hs *HeterogeneousScheduler) GetMetrics() schedulerMetrics {
 	return schedulerMetrics{

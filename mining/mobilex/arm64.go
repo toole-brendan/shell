@@ -131,6 +131,11 @@ func (opt *ARM64Optimizer) initializeCache() {
 	}
 }
 
+// HasNEON returns whether NEON vector instructions are available.
+func (opt *ARM64Optimizer) HasNEON() bool {
+	return opt.hasNEON
+}
+
 // VectorHash performs NEON-optimized hashing.
 func (opt *ARM64Optimizer) VectorHash(data []byte) []byte {
 	if !opt.hasNEON {

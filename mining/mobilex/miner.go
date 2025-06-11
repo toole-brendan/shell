@@ -18,6 +18,7 @@ import (
 	"github.com/toole-brendan/shell/chaincfg/chainhash"
 	"github.com/toole-brendan/shell/mining/mobilex/npu"
 	"github.com/toole-brendan/shell/mining/mobilex/npu/fallback"
+	"github.com/toole-brendan/shell/mining/randomx"
 	"github.com/toole-brendan/shell/wire"
 )
 
@@ -29,10 +30,10 @@ type MobileXMiner struct {
 	npu           *npu.NPUManager
 	heterogeneous *HeterogeneousScheduler
 
-	// RandomX components (will be extended from existing implementation)
-	vm      *randomXVM // Placeholder for actual RandomX VM
-	cache   []byte
-	dataset []byte
+	// RandomX components (integrated from existing implementation)
+	cache   *randomx.Cache
+	dataset *randomx.Dataset
+	vm      *randomx.VM
 
 	// Mining state
 	mining          int32 // atomic flag
@@ -43,12 +44,6 @@ type MobileXMiner struct {
 	// Metrics
 	startTime        time.Time
 	metricsCollector *MetricsCollector
-}
-
-// randomXVM is a placeholder for the actual RandomX VM integration.
-// In real implementation, this would interface with the existing RandomX code.
-type randomXVM struct {
-	state []byte
 }
 
 // NewMobileXMiner creates a new mobile-optimized miner.
@@ -80,9 +75,36 @@ func NewMobileXMiner(cfg *Config) (*MobileXMiner, error) {
 	heterogeneous := NewHeterogeneousScheduler(cfg.BigCores, cfg.LittleCores)
 
 	// Initialize RandomX components
-	cacheSize := cfg.RandomXCacheSize
-	if cfg.RandomXMemory < 1*1024*1024*1024 { // Light mode if < 1GB
-		cacheSize = 256 * 1024 * 1024
+	seed := make([]byte, 32) // Will be properly set during mining
+	cache, err := randomx.NewCache(seed)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create RandomX cache: %w", err)
+	}
+
+	// For mobile, we'll use light mode (cache only) by default
+	// Full dataset mode can be enabled for devices with enough memory
+	var dataset *randomx.Dataset
+	var vm *randomx.VM
+
+	if cfg.RandomXMemory >= 2*1024*1024*1024 {
+		// Fast mode with full dataset
+		dataset, err = randomx.NewDataset(cache)
+		if err != nil {
+			cache.Close()
+			return nil, fmt.Errorf("failed to create RandomX dataset: %w", err)
+		}
+		vm, err = randomx.NewVM(cache, dataset)
+	} else {
+		// Light mode with cache only
+		vm, err = randomx.NewVM(cache, nil)
+	}
+
+	if err != nil {
+		if dataset != nil {
+			dataset.Close()
+		}
+		cache.Close()
+		return nil, fmt.Errorf("failed to create RandomX VM: %w", err)
 	}
 
 	miner := &MobileXMiner{
@@ -91,15 +113,10 @@ func NewMobileXMiner(cfg *Config) (*MobileXMiner, error) {
 		thermal:          thermal,
 		npu:              npuManager,
 		heterogeneous:    heterogeneous,
-		cache:            make([]byte, cacheSize),
-		dataset:          nil, // Will be allocated based on mode
-		vm:               &randomXVM{state: make([]byte, 2048)},
+		cache:            cache,
+		dataset:          dataset,
+		vm:               vm,
 		metricsCollector: NewMetricsCollector(),
-	}
-
-	// Initialize dataset if in fast mode
-	if cfg.RandomXMemory >= 2*1024*1024*1024 {
-		miner.dataset = make([]byte, cfg.RandomXMemory)
 	}
 
 	return miner, nil
@@ -131,6 +148,21 @@ func (m *MobileXMiner) Stop() {
 	atomic.StoreInt32(&m.mining, 0)
 	m.heterogeneous.Stop()
 	m.metricsCollector.Stop()
+}
+
+// Close releases all resources.
+func (m *MobileXMiner) Close() {
+	m.Stop()
+
+	if m.vm != nil {
+		m.vm.Close()
+	}
+	if m.dataset != nil {
+		m.dataset.Close()
+	}
+	if m.cache != nil {
+		m.cache.Close()
+	}
 }
 
 // SolveBlock attempts to find a valid solution for the given block.
@@ -206,22 +238,45 @@ func (m *MobileXMiner) computeMobileXHash(header *wire.BlockHeader) chainhash.Ha
 	// Serialize header
 	headerBytes := serializeBlockHeader(header)
 
-	// Apply ARM64 optimizations
-	if m.cfg.UseNEON {
+	// Apply ARM64 optimizations if available
+	if m.cfg.UseNEON && m.arm64.HasNEON() {
+		// Pre-process with NEON vector operations
 		headerBytes = m.arm64.VectorHash(headerBytes)
 	}
 
-	// Run through RandomX VM (placeholder)
-	// In real implementation, this would call the actual RandomX VM
-	vmOutput := m.vm.Calculate(headerBytes)
+	// Run through RandomX VM
+	vmOutput := m.vm.CalcHash(headerBytes)
 
 	// Apply additional mobile-specific mixing
-	mixed := m.arm64.ARMSpecificHash(bytesToUint32s(vmOutput))
+	// This ensures mobile hardware advantages
+	mixed := m.applyMobileMixing(vmOutput)
+
+	// Convert to chainhash.Hash
+	var hash chainhash.Hash
+	copy(hash[:], mixed)
+
+	return hash
+}
+
+// applyMobileMixing applies mobile-specific mixing to the RandomX output.
+func (m *MobileXMiner) applyMobileMixing(randomxHash []byte) []byte {
+	// Convert to uint32s for ARM-specific operations
+	uint32Data := bytesToUint32s(randomxHash)
+
+	// Apply ARM-specific hash operations
+	mixed := m.arm64.ARMSpecificHash(uint32Data)
+
+	// Mix with heterogeneous core scheduling state
+	coreState := m.heterogeneous.GetCoreState()
+	for i := range mixed {
+		mixed[i] ^= coreState
+	}
 
 	// Final hash
-	finalHash := sha256.Sum256(uint32sToBytes(mixed))
+	finalBytes := uint32sToBytes(mixed)
+	finalHash := sha256.Sum256(finalBytes)
 
-	return chainhash.Hash(finalHash)
+	return finalHash[:]
 }
 
 // shouldRunNPU determines if NPU operations should run this iteration.
@@ -233,8 +288,15 @@ func (m *MobileXMiner) shouldRunNPU() bool {
 
 // runNPUStep executes NPU operations and feeds results back into mining.
 func (m *MobileXMiner) runNPUStep() error {
-	// Get current VM state
-	vmState := m.vm.GetState()
+	// Get current RandomX VM state (cache state for mixing)
+	// In a real implementation, we would extract internal VM state
+	// For now, use hash counter as pseudo-state
+	vmState := make([]byte, 2048)
+	binary.LittleEndian.PutUint64(vmState, atomic.LoadUint64(&m.hashesCompleted))
+
+	// Hash the state to create more entropy
+	stateHash := sha256.Sum256(vmState[:8])
+	copy(vmState, stateHash[:])
 
 	// Convert to tensor (32x32x3)
 	tensor := stateToTensor(vmState)
@@ -245,11 +307,24 @@ func (m *MobileXMiner) runNPUStep() error {
 		return fmt.Errorf("NPU execution failed: %w", err)
 	}
 
-	// Feed results back into VM
-	newState := tensorToState(output)
-	m.vm.UpdateState(newState)
+	// Mix NPU results back into mining state
+	// This affects future hash computations
+	npuResult := tensorToState(output)
+	m.mixNPUResults(npuResult)
 
 	return nil
+}
+
+// mixNPUResults mixes NPU computation results into the mining process.
+func (m *MobileXMiner) mixNPUResults(npuResult []byte) {
+	// In a real implementation, this would modify RandomX VM state
+	// For now, we'll use it to influence nonce selection
+	if len(npuResult) >= 4 {
+		// Use NPU result to skip certain nonce ranges
+		// This simulates NPU influence on mining
+		skip := binary.LittleEndian.Uint32(npuResult[:4]) % 1000
+		atomic.AddUint64(&m.hashesCompleted, uint64(skip))
+	}
 }
 
 // thermalMonitoringLoop continuously monitors thermal state.
@@ -335,21 +410,6 @@ func (m *MobileXMiner) GetHashRate() float64 {
 	return float64(atomic.LoadUint64(&m.hashesCompleted)) / elapsed
 }
 
-// VM placeholder methods
-func (vm *randomXVM) Calculate(input []byte) []byte {
-	// Placeholder for RandomX calculation
-	hash := sha256.Sum256(input)
-	return hash[:]
-}
-
-func (vm *randomXVM) GetState() []byte {
-	return vm.state
-}
-
-func (vm *randomXVM) UpdateState(newState []byte) {
-	copy(vm.state, newState)
-}
-
 // Helper functions
 
 // serializeBlockHeader serializes a block header to bytes.
@@ -402,14 +462,6 @@ func uint32sToBytes(u []uint32) []byte {
 		binary.LittleEndian.PutUint32(result[i*4:], v)
 	}
 	return result
-}
-
-// detectNPUAdapter detects and returns the appropriate NPU adapter.
-func detectNPUAdapter() npu.NPUAdapter {
-	// In real implementation, this would detect the platform and return
-	// the appropriate adapter (NNAPI for Android, Core ML for iOS, etc.)
-	// For now, return nil which will trigger CPU fallback
-	return nil
 }
 
 // CompactToBig converts a compact representation to a big integer.

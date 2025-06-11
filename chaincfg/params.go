@@ -237,8 +237,9 @@ type Params struct {
 	RandomXMemory       int64 // Memory requirement (2GB)
 
 	// Layer activation heights
-	L1ActivationHeight  int32 // Payment channels from genesis
-	L05ActivationHeight int32 // Privacy layer after ~2 years
+	L1ActivationHeight      int32 // Payment channels from genesis
+	L05ActivationHeight     int32 // Privacy layer after ~2 years
+	MobileXActivationHeight int32 // Mobile mining activation height
 
 	// These fields define the block heights at which the specified softfork
 	// BIP became active.
