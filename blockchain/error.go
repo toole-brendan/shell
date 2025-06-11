@@ -224,6 +224,10 @@ const (
 	// ErrTimewarpAttack indicates a timewarp attack i.e.
 	// when block's timestamp is too early on diff adjustment block.
 	ErrTimewarpAttack
+
+	// ErrInvalidThermalProof indicates that a block's thermal proof
+	// for mobile mining failed validation or is missing when required.
+	ErrInvalidThermalProof
 )
 
 // Map of ErrorCode values back to their constant names for pretty printing.
@@ -271,6 +275,8 @@ var errorCodeStrings = map[ErrorCode]string{
 	ErrPreviousBlockUnknown:      "ErrPreviousBlockUnknown",
 	ErrInvalidAncestorBlock:      "ErrInvalidAncestorBlock",
 	ErrPrevBlockNotBest:          "ErrPrevBlockNotBest",
+	ErrTimewarpAttack:            "ErrTimewarpAttack",
+	ErrInvalidThermalProof:       "ErrInvalidThermalProof",
 }
 
 // String returns the ErrorCode as a human-readable name.

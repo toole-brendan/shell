@@ -13,8 +13,8 @@ import (
 
 // MaxBlockHeaderPayload is the maximum number of bytes a block header can be.
 // Version 4 bytes + Timestamp 4 bytes + Bits 4 bytes + Nonce 4 bytes +
-// PrevBlock and MerkleRoot hashes.
-const MaxBlockHeaderPayload = 16 + (chainhash.HashSize * 2)
+// ThermalProof 8 bytes + PrevBlock and MerkleRoot hashes.
+const MaxBlockHeaderPayload = 24 + (chainhash.HashSize * 2)
 
 // BlockHeader defines information about a block and is used in the bitcoin
 // block (MsgBlock) and headers (MsgHeaders) messages.
@@ -37,11 +37,15 @@ type BlockHeader struct {
 
 	// Nonce used to generate the block.
 	Nonce uint32
+
+	// ThermalProof is used for mobile mining thermal compliance verification.
+	// This field contains a proof that the mining was done within thermal limits.
+	ThermalProof uint64
 }
 
 // blockHeaderLen is a constant that represents the number of bytes for a block
 // header.
-const blockHeaderLen = 80
+const blockHeaderLen = 88
 
 // BlockHash computes the block identifier hash for the given block header.
 func (h *BlockHeader) BlockHash() chainhash.Hash {
@@ -87,20 +91,21 @@ func (h *BlockHeader) Serialize(w io.Writer) error {
 }
 
 // NewBlockHeader returns a new BlockHeader using the provided version, previous
-// block hash, merkle root hash, difficulty bits, and nonce used to generate the
-// block with defaults for the remaining fields.
+// block hash, merkle root hash, difficulty bits, nonce, and thermal proof used
+// to generate the block with defaults for the remaining fields.
 func NewBlockHeader(version int32, prevHash, merkleRootHash *chainhash.Hash,
-	bits uint32, nonce uint32) *BlockHeader {
+	bits uint32, nonce uint32, thermalProof uint64) *BlockHeader {
 
 	// Limit the timestamp to one second precision since the protocol
 	// doesn't support better.
 	return &BlockHeader{
-		Version:    version,
-		PrevBlock:  *prevHash,
-		MerkleRoot: *merkleRootHash,
-		Timestamp:  time.Unix(time.Now().Unix(), 0),
-		Bits:       bits,
-		Nonce:      nonce,
+		Version:      version,
+		PrevBlock:    *prevHash,
+		MerkleRoot:   *merkleRootHash,
+		Timestamp:    time.Unix(time.Now().Unix(), 0),
+		Bits:         bits,
+		Nonce:        nonce,
+		ThermalProof: thermalProof,
 	}
 }
 
@@ -156,6 +161,11 @@ func readBlockHeaderBuf(r io.Reader, pver uint32, bh *BlockHeader,
 	}
 	bh.Nonce = littleEndian.Uint32(buf[:4])
 
+	if _, err := io.ReadFull(r, buf[:8]); err != nil {
+		return err
+	}
+	bh.ThermalProof = littleEndian.Uint64(buf[:8])
+
 	return nil
 }
 
@@ -208,6 +218,11 @@ func writeBlockHeaderBuf(w io.Writer, pver uint32, bh *BlockHeader,
 
 	littleEndian.PutUint32(buf[:4], bh.Nonce)
 	if _, err := w.Write(buf[:4]); err != nil {
+		return err
+	}
+
+	littleEndian.PutUint64(buf[:8], bh.ThermalProof)
+	if _, err := w.Write(buf[:8]); err != nil {
 		return err
 	}
 

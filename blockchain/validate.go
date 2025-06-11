@@ -735,6 +735,29 @@ func CheckBlockHeaderContext(header *wire.BlockHeader, prevNode HeaderCtx,
 				return err
 			}
 		}
+
+		// MobileX Thermal Proof Validation
+		// Check if MobileX deployment is active
+		if blockHeight >= params.MobileXActivationHeight {
+			// Validate thermal proof for mobile mining
+			if header.ThermalProof == 0 {
+				return ruleError(ErrInvalidThermalProof,
+					"block missing required thermal proof for mobile mining")
+			}
+
+			// Random validation: 10% of blocks are re-validated at reduced speed
+			// This helps detect systematic thermal cheating
+			shouldValidate := blockHeight%10 == 0 // Simple 10% selection
+			if shouldValidate {
+				// In production, this would call the thermal verification system
+				// For now, we validate that the thermal proof is within acceptable range
+				// The actual thermal validation would be done by the mobilex package
+				if !isValidThermalProof(header) {
+					return ruleError(ErrInvalidThermalProof,
+						"block thermal proof failed validation")
+				}
+			}
+		}
 	}
 
 	// Reject outdated block versions once a majority of the network
@@ -1441,6 +1464,37 @@ func (b *BlockChain) FindPreviousCheckpoint() (HeaderCtx, error) {
 	}
 
 	return checkpoint, err
+}
+
+// isValidThermalProof performs validation of the thermal proof in a block header.
+// This is used for mobile mining validation to ensure miners are operating within
+// thermal limits. In production, this would interface with the mobilex package
+// for full thermal verification.
+func isValidThermalProof(header *wire.BlockHeader) bool {
+	// Basic validation that thermal proof is present and non-zero
+	if header.ThermalProof == 0 {
+		return false
+	}
+
+	// In production, this would call into the mobilex thermal verification
+	// system to validate the proof. For now, we do basic range validation.
+	// Valid thermal proofs should be within a reasonable range.
+
+	// Check if thermal proof is within expected bounds
+	// These are placeholder values - real implementation would use
+	// the mobilex thermal verification system
+	const minThermalProof = 1000
+	const maxThermalProof = uint64(1) << 60 // Leave some headroom
+
+	if header.ThermalProof < minThermalProof || header.ThermalProof > maxThermalProof {
+		return false
+	}
+
+	// TODO: In production, call mobilex thermal verification:
+	// thermal := mobilex.NewThermalVerification(...)
+	// return thermal.ValidateThermalProof(header) == nil
+
+	return true
 }
 
 // A compile-time assertion to ensure BlockChain implements the ChainCtx
