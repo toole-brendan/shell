@@ -11,7 +11,6 @@ import (
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/toole-brendan/shell/chaincfg"
-	"github.com/toole-brendan/shell/covenants/vault"
 	"github.com/toole-brendan/shell/wire"
 )
 
@@ -28,10 +27,8 @@ type ShellTaprootBuilder struct {
 	leaves      []TapLeaf
 
 	// Shell-specific fields
-	vaultTemplate *vault.VaultTemplate
-	isVault       bool
-	isChannel     bool
-	isClaimable   bool
+	isChannel   bool
+	isClaimable bool
 }
 
 // NewShellTaprootBuilder creates a new builder for Shell Taproot outputs
@@ -42,26 +39,10 @@ func NewShellTaprootBuilder(internalKey *btcec.PublicKey) *ShellTaprootBuilder {
 	}
 }
 
-// AddVaultLeaf adds a vault covenant leaf to the Taproot tree
-func (stb *ShellTaprootBuilder) AddVaultLeaf(template *vault.VaultTemplate, script []byte) error {
-	if stb.isChannel || stb.isClaimable {
-		return errors.New("cannot mix vault with channel/claimable outputs")
-	}
-
-	stb.isVault = true
-	stb.vaultTemplate = template
-
-	// Create leaf with vault-specific version
-	leaf := NewTapLeaf(ShellTaprootLeafVersion, script)
-	stb.leaves = append(stb.leaves, leaf)
-
-	return nil
-}
-
 // AddChannelLeaf adds a payment channel leaf to the Taproot tree
 func (stb *ShellTaprootBuilder) AddChannelLeaf(script []byte) error {
-	if stb.isVault || stb.isClaimable {
-		return errors.New("cannot mix channel with vault/claimable outputs")
+	if stb.isClaimable {
+		return errors.New("cannot mix channel with claimable outputs")
 	}
 
 	stb.isChannel = true
@@ -75,8 +56,8 @@ func (stb *ShellTaprootBuilder) AddChannelLeaf(script []byte) error {
 
 // AddClaimableLeaf adds a claimable balance leaf to the Taproot tree
 func (stb *ShellTaprootBuilder) AddClaimableLeaf(script []byte) error {
-	if stb.isVault || stb.isChannel {
-		return errors.New("cannot mix claimable with vault/channel outputs")
+	if stb.isChannel {
+		return errors.New("cannot mix claimable with channel outputs")
 	}
 
 	stb.isClaimable = true
@@ -175,7 +156,6 @@ func verifyShellOpcodeRules(vm *Engine) error {
 	// Scan script for Shell-specific opcodes
 	script := vm.scripts[vm.scriptIdx]
 
-	hasVaultOp := bytes.Contains(script, []byte{OP_VAULTTEMPLATEVERIFY})
 	hasChannelOp := bytes.Contains(script, []byte{OP_CHANNEL_OPEN}) ||
 		bytes.Contains(script, []byte{OP_CHANNEL_UPDATE}) ||
 		bytes.Contains(script, []byte{OP_CHANNEL_CLOSE})
@@ -184,9 +164,6 @@ func verifyShellOpcodeRules(vm *Engine) error {
 
 	// Ensure opcodes aren't mixed inappropriately
 	opCount := 0
-	if hasVaultOp {
-		opCount++
-	}
 	if hasChannelOp {
 		opCount++
 	}
@@ -195,7 +172,7 @@ func verifyShellOpcodeRules(vm *Engine) error {
 	}
 
 	if opCount > 1 {
-		return errors.New("cannot mix vault, channel, and claimable opcodes")
+		return errors.New("cannot mix channel and claimable opcodes")
 	}
 
 	// Additional validation based on transaction type
@@ -246,41 +223,6 @@ func ComputeShellTaprootAddress(internalKey *btcec.PublicKey, scriptRoot []byte,
 	// TODO: Implement proper bech32m encoding for Shell addresses
 	// For now, return a placeholder
 	return fmt.Sprintf("xsl1%x", witnessProgram), nil
-}
-
-// CreateShellVaultOutput creates a Taproot output with vault covenant
-func CreateShellVaultOutput(amount int64, vaultConfig vault.CentralBankVaultConfig) (*wire.TxOut, error) {
-	// Generate internal key for key-spend path (emergency recovery)
-	internalPrivKey, err := btcec.NewPrivateKey()
-	if err != nil {
-		return nil, err
-	}
-	internalKey := internalPrivKey.PubKey()
-
-	// Create vault
-	vaultScript, err := vault.CreateCentralBankVault(vaultConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	// Build Taproot output
-	builder := NewShellTaprootBuilder(internalKey)
-
-	// Add vault template leaf
-	if err := builder.AddVaultLeaf(&vaultScript.Template, nil); err != nil {
-		return nil, err
-	}
-
-	// Build output script
-	outputScript, err := builder.Build()
-	if err != nil {
-		return nil, err
-	}
-
-	return &wire.TxOut{
-		Value:    amount,
-		PkScript: outputScript,
-	}, nil
 }
 
 // ShellTaprootSigHashType represents allowed sighash types for Shell

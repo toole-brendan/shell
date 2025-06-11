@@ -239,7 +239,6 @@ func testShellOpcodeValidation(t *testing.T) {
 
 	// Test all Shell opcodes
 	shellOpcodes := []byte{
-		txscript.OP_VAULTTEMPLATEVERIFY,
 		txscript.OP_CHANNEL_OPEN,
 		txscript.OP_CHANNEL_UPDATE,
 		txscript.OP_CHANNEL_CLOSE,
@@ -258,7 +257,7 @@ func testShellOpcodeValidation(t *testing.T) {
 		}
 	}
 
-	t.Logf("   All 6 Shell opcodes detected correctly")
+	t.Logf("   All 5 Shell opcodes detected correctly")
 
 	// Test non-Shell script
 	nonShellScript := []byte{txscript.OP_DUP, txscript.OP_HASH160}

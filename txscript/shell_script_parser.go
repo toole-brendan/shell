@@ -250,7 +250,6 @@ func ExtractClaimableClaimParams(script []byte, witness wire.TxWitness) (*ShellS
 // DetectShellOpcode scans a script for Shell-specific opcodes
 func DetectShellOpcode(script []byte) (byte, bool) {
 	shellOpcodes := []byte{
-		OP_VAULTTEMPLATEVERIFY,
 		OP_CHANNEL_OPEN,
 		OP_CHANNEL_UPDATE,
 		OP_CHANNEL_CLOSE,

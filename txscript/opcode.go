@@ -238,7 +238,7 @@ const (
 	OP_UNKNOWN194          = 0xc2 // 194
 	OP_UNKNOWN195          = 0xc3 // 195
 	OP_UNKNOWN196          = 0xc4 // 196
-	OP_VAULTTEMPLATEVERIFY = 0xc5 // 197 - Shell: Vault covenant verification
+	OP_UNKNOWN197          = 0xc5 // 197
 	OP_CHANNEL_OPEN        = 0xc6 // 198 - Shell: Open payment channel
 	OP_CHANNEL_UPDATE      = 0xc7 // 199 - Shell: Update payment channel
 	OP_CHANNEL_CLOSE       = 0xc8 // 200 - Shell: Close payment channel
@@ -514,69 +514,69 @@ var opcodeArray = [256]opcode{
 	OP_NOP10: {OP_NOP10, "OP_NOP10", 1, opcodeNop},
 
 	// Undefined opcodes.
-	OP_UNKNOWN187:          {OP_UNKNOWN187, "OP_UNKNOWN187", 1, opcodeInvalid},
-	OP_UNKNOWN188:          {OP_UNKNOWN188, "OP_UNKNOWN188", 1, opcodeInvalid},
-	OP_UNKNOWN189:          {OP_UNKNOWN189, "OP_UNKNOWN189", 1, opcodeInvalid},
-	OP_UNKNOWN190:          {OP_UNKNOWN190, "OP_UNKNOWN190", 1, opcodeInvalid},
-	OP_UNKNOWN191:          {OP_UNKNOWN191, "OP_UNKNOWN191", 1, opcodeInvalid},
-	OP_UNKNOWN192:          {OP_UNKNOWN192, "OP_UNKNOWN192", 1, opcodeInvalid},
-	OP_UNKNOWN193:          {OP_UNKNOWN193, "OP_UNKNOWN193", 1, opcodeInvalid},
-	OP_UNKNOWN194:          {OP_UNKNOWN194, "OP_UNKNOWN194", 1, opcodeInvalid},
-	OP_UNKNOWN195:          {OP_UNKNOWN195, "OP_UNKNOWN195", 1, opcodeInvalid},
-	OP_UNKNOWN196:          {OP_UNKNOWN196, "OP_UNKNOWN196", 1, opcodeInvalid},
-	OP_VAULTTEMPLATEVERIFY: {OP_VAULTTEMPLATEVERIFY, "OP_VAULTTEMPLATEVERIFY", 1, opcodeVaultTemplateVerify},
-	OP_CHANNEL_OPEN:        {OP_CHANNEL_OPEN, "OP_CHANNEL_OPEN", 1, opcodeChannelOpen},
-	OP_CHANNEL_UPDATE:      {OP_CHANNEL_UPDATE, "OP_CHANNEL_UPDATE", 1, opcodeChannelUpdate},
-	OP_CHANNEL_CLOSE:       {OP_CHANNEL_CLOSE, "OP_CHANNEL_CLOSE", 1, opcodeChannelClose},
-	OP_CLAIMABLE_CREATE:    {OP_CLAIMABLE_CREATE, "OP_CLAIMABLE_CREATE", 1, opcodeClaimableCreate},
-	OP_CLAIMABLE_CLAIM:     {OP_CLAIMABLE_CLAIM, "OP_CLAIMABLE_CLAIM", 1, opcodeClaimableClaim},
-	OP_UNKNOWN203:          {OP_UNKNOWN203, "OP_UNKNOWN203", 1, opcodeInvalid},
-	OP_UNKNOWN204:          {OP_UNKNOWN204, "OP_UNKNOWN204", 1, opcodeInvalid},
-	OP_UNKNOWN205:          {OP_UNKNOWN205, "OP_UNKNOWN205", 1, opcodeInvalid},
-	OP_UNKNOWN206:          {OP_UNKNOWN206, "OP_UNKNOWN206", 1, opcodeInvalid},
-	OP_UNKNOWN207:          {OP_UNKNOWN207, "OP_UNKNOWN207", 1, opcodeInvalid},
-	OP_UNKNOWN208:          {OP_UNKNOWN208, "OP_UNKNOWN208", 1, opcodeInvalid},
-	OP_UNKNOWN209:          {OP_UNKNOWN209, "OP_UNKNOWN209", 1, opcodeInvalid},
-	OP_UNKNOWN210:          {OP_UNKNOWN210, "OP_UNKNOWN210", 1, opcodeInvalid},
-	OP_UNKNOWN211:          {OP_UNKNOWN211, "OP_UNKNOWN211", 1, opcodeInvalid},
-	OP_UNKNOWN212:          {OP_UNKNOWN212, "OP_UNKNOWN212", 1, opcodeInvalid},
-	OP_UNKNOWN213:          {OP_UNKNOWN213, "OP_UNKNOWN213", 1, opcodeInvalid},
-	OP_UNKNOWN214:          {OP_UNKNOWN214, "OP_UNKNOWN214", 1, opcodeInvalid},
-	OP_UNKNOWN215:          {OP_UNKNOWN215, "OP_UNKNOWN215", 1, opcodeInvalid},
-	OP_UNKNOWN216:          {OP_UNKNOWN216, "OP_UNKNOWN216", 1, opcodeInvalid},
-	OP_UNKNOWN217:          {OP_UNKNOWN217, "OP_UNKNOWN217", 1, opcodeInvalid},
-	OP_UNKNOWN218:          {OP_UNKNOWN218, "OP_UNKNOWN218", 1, opcodeInvalid},
-	OP_UNKNOWN219:          {OP_UNKNOWN219, "OP_UNKNOWN219", 1, opcodeInvalid},
-	OP_UNKNOWN220:          {OP_UNKNOWN220, "OP_UNKNOWN220", 1, opcodeInvalid},
-	OP_UNKNOWN221:          {OP_UNKNOWN221, "OP_UNKNOWN221", 1, opcodeInvalid},
-	OP_UNKNOWN222:          {OP_UNKNOWN222, "OP_UNKNOWN222", 1, opcodeInvalid},
-	OP_UNKNOWN223:          {OP_UNKNOWN223, "OP_UNKNOWN223", 1, opcodeInvalid},
-	OP_UNKNOWN224:          {OP_UNKNOWN224, "OP_UNKNOWN224", 1, opcodeInvalid},
-	OP_UNKNOWN225:          {OP_UNKNOWN225, "OP_UNKNOWN225", 1, opcodeInvalid},
-	OP_UNKNOWN226:          {OP_UNKNOWN226, "OP_UNKNOWN226", 1, opcodeInvalid},
-	OP_UNKNOWN227:          {OP_UNKNOWN227, "OP_UNKNOWN227", 1, opcodeInvalid},
-	OP_UNKNOWN228:          {OP_UNKNOWN228, "OP_UNKNOWN228", 1, opcodeInvalid},
-	OP_UNKNOWN229:          {OP_UNKNOWN229, "OP_UNKNOWN229", 1, opcodeInvalid},
-	OP_UNKNOWN230:          {OP_UNKNOWN230, "OP_UNKNOWN230", 1, opcodeInvalid},
-	OP_UNKNOWN231:          {OP_UNKNOWN231, "OP_UNKNOWN231", 1, opcodeInvalid},
-	OP_UNKNOWN232:          {OP_UNKNOWN232, "OP_UNKNOWN232", 1, opcodeInvalid},
-	OP_UNKNOWN233:          {OP_UNKNOWN233, "OP_UNKNOWN233", 1, opcodeInvalid},
-	OP_UNKNOWN234:          {OP_UNKNOWN234, "OP_UNKNOWN234", 1, opcodeInvalid},
-	OP_UNKNOWN235:          {OP_UNKNOWN235, "OP_UNKNOWN235", 1, opcodeInvalid},
-	OP_UNKNOWN236:          {OP_UNKNOWN236, "OP_UNKNOWN236", 1, opcodeInvalid},
-	OP_UNKNOWN237:          {OP_UNKNOWN237, "OP_UNKNOWN237", 1, opcodeInvalid},
-	OP_UNKNOWN238:          {OP_UNKNOWN238, "OP_UNKNOWN238", 1, opcodeInvalid},
-	OP_UNKNOWN239:          {OP_UNKNOWN239, "OP_UNKNOWN239", 1, opcodeInvalid},
-	OP_UNKNOWN240:          {OP_UNKNOWN240, "OP_UNKNOWN240", 1, opcodeInvalid},
-	OP_UNKNOWN241:          {OP_UNKNOWN241, "OP_UNKNOWN241", 1, opcodeInvalid},
-	OP_UNKNOWN242:          {OP_UNKNOWN242, "OP_UNKNOWN242", 1, opcodeInvalid},
-	OP_UNKNOWN243:          {OP_UNKNOWN243, "OP_UNKNOWN243", 1, opcodeInvalid},
-	OP_UNKNOWN244:          {OP_UNKNOWN244, "OP_UNKNOWN244", 1, opcodeInvalid},
-	OP_UNKNOWN245:          {OP_UNKNOWN245, "OP_UNKNOWN245", 1, opcodeInvalid},
-	OP_UNKNOWN246:          {OP_UNKNOWN246, "OP_UNKNOWN246", 1, opcodeInvalid},
-	OP_UNKNOWN247:          {OP_UNKNOWN247, "OP_UNKNOWN247", 1, opcodeInvalid},
-	OP_UNKNOWN248:          {OP_UNKNOWN248, "OP_UNKNOWN248", 1, opcodeInvalid},
-	OP_UNKNOWN249:          {OP_UNKNOWN249, "OP_UNKNOWN249", 1, opcodeInvalid},
+	OP_UNKNOWN187:       {OP_UNKNOWN187, "OP_UNKNOWN187", 1, opcodeInvalid},
+	OP_UNKNOWN188:       {OP_UNKNOWN188, "OP_UNKNOWN188", 1, opcodeInvalid},
+	OP_UNKNOWN189:       {OP_UNKNOWN189, "OP_UNKNOWN189", 1, opcodeInvalid},
+	OP_UNKNOWN190:       {OP_UNKNOWN190, "OP_UNKNOWN190", 1, opcodeInvalid},
+	OP_UNKNOWN191:       {OP_UNKNOWN191, "OP_UNKNOWN191", 1, opcodeInvalid},
+	OP_UNKNOWN192:       {OP_UNKNOWN192, "OP_UNKNOWN192", 1, opcodeInvalid},
+	OP_UNKNOWN193:       {OP_UNKNOWN193, "OP_UNKNOWN193", 1, opcodeInvalid},
+	OP_UNKNOWN194:       {OP_UNKNOWN194, "OP_UNKNOWN194", 1, opcodeInvalid},
+	OP_UNKNOWN195:       {OP_UNKNOWN195, "OP_UNKNOWN195", 1, opcodeInvalid},
+	OP_UNKNOWN196:       {OP_UNKNOWN196, "OP_UNKNOWN196", 1, opcodeInvalid},
+	OP_UNKNOWN197:       {OP_UNKNOWN197, "OP_UNKNOWN197", 1, opcodeInvalid},
+	OP_CHANNEL_OPEN:     {OP_CHANNEL_OPEN, "OP_CHANNEL_OPEN", 1, opcodeChannelOpen},
+	OP_CHANNEL_UPDATE:   {OP_CHANNEL_UPDATE, "OP_CHANNEL_UPDATE", 1, opcodeChannelUpdate},
+	OP_CHANNEL_CLOSE:    {OP_CHANNEL_CLOSE, "OP_CHANNEL_CLOSE", 1, opcodeChannelClose},
+	OP_CLAIMABLE_CREATE: {OP_CLAIMABLE_CREATE, "OP_CLAIMABLE_CREATE", 1, opcodeClaimableCreate},
+	OP_CLAIMABLE_CLAIM:  {OP_CLAIMABLE_CLAIM, "OP_CLAIMABLE_CLAIM", 1, opcodeClaimableClaim},
+	OP_UNKNOWN203:       {OP_UNKNOWN203, "OP_UNKNOWN203", 1, opcodeInvalid},
+	OP_UNKNOWN204:       {OP_UNKNOWN204, "OP_UNKNOWN204", 1, opcodeInvalid},
+	OP_UNKNOWN205:       {OP_UNKNOWN205, "OP_UNKNOWN205", 1, opcodeInvalid},
+	OP_UNKNOWN206:       {OP_UNKNOWN206, "OP_UNKNOWN206", 1, opcodeInvalid},
+	OP_UNKNOWN207:       {OP_UNKNOWN207, "OP_UNKNOWN207", 1, opcodeInvalid},
+	OP_UNKNOWN208:       {OP_UNKNOWN208, "OP_UNKNOWN208", 1, opcodeInvalid},
+	OP_UNKNOWN209:       {OP_UNKNOWN209, "OP_UNKNOWN209", 1, opcodeInvalid},
+	OP_UNKNOWN210:       {OP_UNKNOWN210, "OP_UNKNOWN210", 1, opcodeInvalid},
+	OP_UNKNOWN211:       {OP_UNKNOWN211, "OP_UNKNOWN211", 1, opcodeInvalid},
+	OP_UNKNOWN212:       {OP_UNKNOWN212, "OP_UNKNOWN212", 1, opcodeInvalid},
+	OP_UNKNOWN213:       {OP_UNKNOWN213, "OP_UNKNOWN213", 1, opcodeInvalid},
+	OP_UNKNOWN214:       {OP_UNKNOWN214, "OP_UNKNOWN214", 1, opcodeInvalid},
+	OP_UNKNOWN215:       {OP_UNKNOWN215, "OP_UNKNOWN215", 1, opcodeInvalid},
+	OP_UNKNOWN216:       {OP_UNKNOWN216, "OP_UNKNOWN216", 1, opcodeInvalid},
+	OP_UNKNOWN217:       {OP_UNKNOWN217, "OP_UNKNOWN217", 1, opcodeInvalid},
+	OP_UNKNOWN218:       {OP_UNKNOWN218, "OP_UNKNOWN218", 1, opcodeInvalid},
+	OP_UNKNOWN219:       {OP_UNKNOWN219, "OP_UNKNOWN219", 1, opcodeInvalid},
+	OP_UNKNOWN220:       {OP_UNKNOWN220, "OP_UNKNOWN220", 1, opcodeInvalid},
+	OP_UNKNOWN221:       {OP_UNKNOWN221, "OP_UNKNOWN221", 1, opcodeInvalid},
+	OP_UNKNOWN222:       {OP_UNKNOWN222, "OP_UNKNOWN222", 1, opcodeInvalid},
+	OP_UNKNOWN223:       {OP_UNKNOWN223, "OP_UNKNOWN223", 1, opcodeInvalid},
+	OP_UNKNOWN224:       {OP_UNKNOWN224, "OP_UNKNOWN224", 1, opcodeInvalid},
+	OP_UNKNOWN225:       {OP_UNKNOWN225, "OP_UNKNOWN225", 1, opcodeInvalid},
+	OP_UNKNOWN226:       {OP_UNKNOWN226, "OP_UNKNOWN226", 1, opcodeInvalid},
+	OP_UNKNOWN227:       {OP_UNKNOWN227, "OP_UNKNOWN227", 1, opcodeInvalid},
+	OP_UNKNOWN228:       {OP_UNKNOWN228, "OP_UNKNOWN228", 1, opcodeInvalid},
+	OP_UNKNOWN229:       {OP_UNKNOWN229, "OP_UNKNOWN229", 1, opcodeInvalid},
+	OP_UNKNOWN230:       {OP_UNKNOWN230, "OP_UNKNOWN230", 1, opcodeInvalid},
+	OP_UNKNOWN231:       {OP_UNKNOWN231, "OP_UNKNOWN231", 1, opcodeInvalid},
+	OP_UNKNOWN232:       {OP_UNKNOWN232, "OP_UNKNOWN232", 1, opcodeInvalid},
+	OP_UNKNOWN233:       {OP_UNKNOWN233, "OP_UNKNOWN233", 1, opcodeInvalid},
+	OP_UNKNOWN234:       {OP_UNKNOWN234, "OP_UNKNOWN234", 1, opcodeInvalid},
+	OP_UNKNOWN235:       {OP_UNKNOWN235, "OP_UNKNOWN235", 1, opcodeInvalid},
+	OP_UNKNOWN236:       {OP_UNKNOWN236, "OP_UNKNOWN236", 1, opcodeInvalid},
+	OP_UNKNOWN237:       {OP_UNKNOWN237, "OP_UNKNOWN237", 1, opcodeInvalid},
+	OP_UNKNOWN238:       {OP_UNKNOWN238, "OP_UNKNOWN238", 1, opcodeInvalid},
+	OP_UNKNOWN239:       {OP_UNKNOWN239, "OP_UNKNOWN239", 1, opcodeInvalid},
+	OP_UNKNOWN240:       {OP_UNKNOWN240, "OP_UNKNOWN240", 1, opcodeInvalid},
+	OP_UNKNOWN241:       {OP_UNKNOWN241, "OP_UNKNOWN241", 1, opcodeInvalid},
+	OP_UNKNOWN242:       {OP_UNKNOWN242, "OP_UNKNOWN242", 1, opcodeInvalid},
+	OP_UNKNOWN243:       {OP_UNKNOWN243, "OP_UNKNOWN243", 1, opcodeInvalid},
+	OP_UNKNOWN244:       {OP_UNKNOWN244, "OP_UNKNOWN244", 1, opcodeInvalid},
+	OP_UNKNOWN245:       {OP_UNKNOWN245, "OP_UNKNOWN245", 1, opcodeInvalid},
+	OP_UNKNOWN246:       {OP_UNKNOWN246, "OP_UNKNOWN246", 1, opcodeInvalid},
+	OP_UNKNOWN247:       {OP_UNKNOWN247, "OP_UNKNOWN247", 1, opcodeInvalid},
+	OP_UNKNOWN248:       {OP_UNKNOWN248, "OP_UNKNOWN248", 1, opcodeInvalid},
+	OP_UNKNOWN249:       {OP_UNKNOWN249, "OP_UNKNOWN249", 1, opcodeInvalid},
 
 	// Bitcoin Core internal use opcode.  Defined here for completeness.
 	OP_SMALLINTEGER: {OP_SMALLINTEGER, "OP_SMALLINTEGER", 1, opcodeInvalid},
@@ -646,8 +646,8 @@ var successOpcodes = map[byte]struct{}{
 	OP_UNKNOWN194: {}, // 194
 	OP_UNKNOWN195: {}, // 195
 	OP_UNKNOWN196: {}, // 196
+	OP_UNKNOWN197: {}, // 197
 	// Shell-specific opcodes are NOT success opcodes - they must be validated
-	// OP_VAULTTEMPLATEVERIFY:   // 197
 	// OP_CHANNEL_OPEN:         // 198
 	// OP_CHANNEL_UPDATE:       // 199
 	// OP_CHANNEL_CLOSE:        // 200
@@ -2472,55 +2472,6 @@ func opcodeCheckMultiSigVerify(op *opcode, data []byte, vm *Engine) error {
 }
 
 // Shell-specific opcode handlers for institutional reserve functionality
-
-// opcodeVaultTemplateVerify implements OP_VAULTTEMPLATEVERIFY (0xc5).
-// This opcode enforces time-delayed spending policies for institutional vaults.
-//
-// Stack transformation: [... template_hash] -> [...]
-func opcodeVaultTemplateVerify(op *opcode, data []byte, vm *Engine) error {
-	// Pop the template hash from the stack
-	templateHashBytes, err := vm.dstack.PopByteArray()
-	if err != nil {
-		return err
-	}
-
-	// Verify hash is 32 bytes
-	if len(templateHashBytes) != 32 {
-		str := fmt.Sprintf("vault template hash must be 32 bytes, got %d", len(templateHashBytes))
-		return scriptError(ErrInvalidStackOperation, str)
-	}
-
-	// Extract vault template from the current transaction output
-	// In a real implementation, this would parse the vault template from witness data
-	// For now, we verify the template hash matches what's expected
-
-	// Get the current output being spent
-	if vm.txIdx >= len(vm.tx.TxOut) {
-		return scriptError(ErrInvalidStackOperation, "invalid transaction index")
-	}
-
-	// In production, we would:
-	// 1. Extract the vault template from witness data
-	// 2. Verify its hash matches templateHashBytes
-	// 3. Check if spending conditions are met (hot threshold or cold timeout)
-	// 4. Validate signatures against the appropriate key set
-
-	// For now, we just verify the basic structure
-	// This allows the opcode to function while full vault logic is implemented
-
-	// Check if this is a vault output (simplified check)
-	output := vm.tx.TxOut[vm.txIdx]
-	if output == nil {
-		return scriptError(ErrInvalidStackOperation, "invalid output")
-	}
-
-	// In a full implementation, we would check:
-	// - CSV timeout has passed for cold recovery
-	// - Sufficient signatures for hot spending
-	// - Template hash matches
-
-	return nil
-}
 
 // opcodeChannelOpen implements OP_CHANNEL_OPEN (0xc6).
 // This opcode opens a payment channel between two parties.

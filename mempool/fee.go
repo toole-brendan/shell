@@ -160,9 +160,6 @@ func (fc *FeeCalculator) getOpcodeDefinedFee(script []byte) (int64, error) {
 
 		case 0xca: // OP_CLAIMABLE_CLAIM
 			return 0, nil // No additional fee for claiming
-
-		case 0xc5: // OP_VAULTTEMPLATEVERIFY
-			return 0, nil // No additional fee for vault operations
 		}
 	}
 
