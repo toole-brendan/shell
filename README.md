@@ -5,6 +5,9 @@
 
 ## Abstract
 
+Project: Shell Reserve
+Token: Shell (XSL)
+
 Shell (XSL) is a cryptocurrency architected exclusively as a reserve asset for central banks, sovereign wealth funds, and large financial institutions. By implementing a minimal layered design that separates consensus, custody, and settlement functions, Shell Reserve delivers institutional-grade functionality while maintaining the simplicity and reliability essential for a global reserve asset.
 
 Unlike existing cryptocurrencies that attempt to serve multiple use cases, Shell Reserve optimizes solely for multi-decade balance sheet holdings. This focused approach enables design decisions that prioritize security, predictability, and auditability over scalability or innovation, creating a true digital analogue to gold reserves.

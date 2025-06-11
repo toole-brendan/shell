@@ -2,6 +2,9 @@
 
 **Shell (XSL) - Digital Gold for Central Banks**
 
+Project: Shell Reserve
+Token: Shell (XSL)
+
 This repository contains the reference implementation of Shell Reserve, a cryptocurrency designed exclusively as a reserve asset for central banks, sovereign wealth funds, and large financial institutions.
 
 ## 🎯 Vision
