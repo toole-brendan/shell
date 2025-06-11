@@ -497,6 +497,11 @@ func (m *MobileXMiner) startHeterogeneousScheduling(cfg *Config) {
 #### Milestone B1: Mobile Applications & User Experience (Month 5-6)
 
 **Complete Native Mobile Mining Applications:**
+
+Based on the implementation strategy:
+- **Custom Components**: Mining engine, UI/UX, platform integration
+- **Adapted Libraries**: RandomX core, SPV wallet libraries, Stratum protocol, crypto primitives
+
 ```cpp
 // mobile/ - Native mobile apps with C++ mining cores
 ├── android/                           // Android app (Kotlin + C++)
@@ -550,13 +555,40 @@ class MiningPowerManager {
 }
 ```
 
+**Library Dependencies:**
+```yaml
+# Proven libraries to adapt/integrate
+dependencies:
+  # Mining Core
+  - randomx: "github.com/tevador/RandomX" # Base RandomX implementation
+  
+  # Cryptography
+  - secp256k1: "github.com/bitcoin-core/secp256k1" # ECDSA signatures
+  - openssl: "3.0+" # General crypto (or BoringSSL on mobile)
+  
+  # SPV Wallet Libraries to Adapt
+  android:
+    - bitcoinj: "org.bitcoinj:bitcoinj-core" # → ShellJ adaptation
+  ios:
+    - bitcoinkit: "github.com/yenom/BitcoinKit" # → ShellKit adaptation
+  
+  # Pool Protocol
+  - stratum: "Standard Stratum v1" # Extend with mobile features
+  
+  # Platform-Specific
+  android:
+    - nnapi: "Android Neural Networks API" # NPU access
+  ios:
+    - coreml: "Core ML Framework" # NPU access
+```
+
 **Deliverables:**
 - [ ] Native Android mining app (Kotlin + C++) with background service
 - [ ] Native iOS mining app (Swift + C++) with background processing
 - [ ] Shared C++ mining core with ARM64 optimizations
 - [ ] NPU integration (NNAPI for Android, Core ML for iOS)
 - [ ] Thermal verification system with ARM PMU integration
-- [ ] SPV light wallet functionality (native implementation)
+- [ ] SPV light wallet functionality (adapted from BitcoinJ/BitcoinKit)
 - [ ] Power management with battery/charging awareness
 - [ ] App store submission preparation (both platforms)
 
@@ -805,9 +837,168 @@ type NetworkHealthMetrics struct {
 
 ## 4. Mobile Mining Application
 
+### 4.0 Architecture Clarification: What Runs Where
+
+#### Mining Happens on the Phone
+- **YES**, all mining computation happens directly on the user's mobile device
+- Uses the phone's CPU (ARM64), GPU, and NPU for hash computation
+- Native C++ implementation for maximum performance
+- No server-side mining or cloud computation
+
+#### Go Codebase Role (Server-Side Only)
+```
+Shell Go Codebase - Runs on Servers/Full Nodes:
+├── Blockchain Infrastructure
+│   ├── Block validation and consensus
+│   ├── UTXO management and state
+│   ├── Network protocol (P2P)
+│   └── Chain synchronization
+├── Mining Pool Servers
+│   ├── Work distribution (getblocktemplate)
+│   ├── Share validation
+│   ├── Difficulty adjustment
+│   └── Reward distribution
+├── Full Node Services
+│   ├── RPC/REST APIs
+│   ├── Block explorer backend
+│   ├── Network monitoring
+│   └── Transaction relay
+└── Reference Implementation
+    ├── Protocol specification
+    ├── Validation rules
+    └── Test vectors
+```
+
+#### Mobile Implementation (Native Code)
+```
+Mobile Apps - Run on User's Phone:
+├── Mining Engine (C++) - CUSTOM
+│   ├── MobileX algorithm (modified RandomX)
+│   ├── ARM64 NEON/SVE optimizations
+│   ├── NPU integration (Core ML/NNAPI)
+│   └── Thermal verification
+├── Pool Client (Native) - ADAPT EXISTING
+│   ├── Stratum protocol client
+│   ├── Work fetching
+│   ├── Share submission
+│   └── Difficulty handling
+├── Light Wallet (Native) - ADAPT EXISTING
+│   ├── SPV implementation
+│   ├── Key management
+│   ├── Transaction creation
+│   └── Balance queries
+└── UI/UX (Swift/Kotlin) - CUSTOM
+    ├── Mining dashboard
+    ├── Wallet interface
+    ├── Power management
+    └── Settings/config
+```
+
+### 4.0.1 Implementation Strategy: Build vs Reuse
+
+Based on your preference for proven libraries, here's the recommended approach:
+
+#### What to Build Custom
+1. **Mining Engine (C++)** - Must be custom for MobileX algorithm
+   - Modified RandomX with mobile optimizations
+   - ARM64 NEON/SVE vector operations
+   - NPU integration layer
+   - Thermal verification system
+
+2. **Native UI (Swift/Kotlin)** - Custom for optimal UX
+   - Mining dashboard with real-time stats
+   - Integrated wallet interface
+   - Power/thermal management UI
+   - Settings and configuration
+
+3. **Platform Integration** - Custom for each platform
+   - iOS: Background task scheduling
+   - Android: Foreground service management
+   - Battery/charging detection
+   - Thermal monitoring
+
+#### What to Adapt from Existing Libraries
+1. **RandomX Core (C++)**
+   - Use official RandomX as base
+   - Add mobile-specific modifications
+   - Maintain compatibility where possible
+
+2. **SPV Wallet Libraries**
+   ```cpp
+   // Example: Adapt existing SPV libraries
+   - BitcoinKit (iOS) → ShellKit
+   - BitcoinJ (Android) → ShellJ
+   - Modify for Shell's UTXO model
+   - Add Confidential Transaction support
+   ```
+
+3. **Stratum Pool Protocol**
+   ```cpp
+   // Use standard Stratum with extensions
+   - Base Stratum v1 protocol
+   - Add thermal proof submission
+   - Add mobile-specific difficulty
+   - NPU work distribution
+   ```
+
+4. **Cryptographic Primitives**
+   ```cpp
+   // Reuse battle-tested libraries
+   - libsecp256k1 for signatures
+   - OpenSSL/BoringSSL for hashing
+   - Bulletproofs library for CT
+   ```
+
+### 4.0.2 Data Flow Architecture
+
+```
+1. App Startup:
+   Phone → Initialize mining engine (C++)
+   Phone → Connect to mining pool (Go server)
+   Phone → Initialize SPV wallet
+
+2. Mining Loop:
+   Pool Server (Go) → Send work to phone
+   Phone (C++) → Compute hashes locally
+   Phone (C++) → Check thermal compliance
+   Phone → Submit shares to pool
+
+3. Block Found:
+   Phone → Submit to Pool Server (Go)
+   Pool Server → Validate and broadcast
+   Full Nodes (Go) → Validate block
+   Network (Go) → Add to blockchain
+
+4. Wallet Operations:
+   Phone → Create transaction locally
+   Phone → Broadcast to network (Go nodes)
+   Go Nodes → Validate and relay
+   Phone → Update balance via SPV
+```
+
+### 4.0.3 Development Priorities
+
+**Phase 1: Core Mining (Months 1-4)**
+- [ ] Port RandomX to ARM64 (use existing C++ base)
+- [ ] Implement mobile optimizations
+- [ ] Basic pool client (adapt Stratum)
+- [ ] Minimal UI for testing
+
+**Phase 2: Full Application (Months 5-8)**
+- [ ] Native UI development (custom)
+- [ ] SPV wallet integration (adapt existing)
+- [ ] Power management (custom)
+- [ ] App store preparation
+
+**Phase 3: Polish & Launch (Months 9-12)**
+- [ ] Performance optimization
+- [ ] Security audit
+- [ ] Beta testing program
+- [ ] Production release
+
 ### 4.1 Architecture Overview - Native Mobile Mining
 
-You're absolutely right to question the Go implementation on mobile! Here's the correct architecture:
+The mobile mining applications use native code for optimal performance:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
