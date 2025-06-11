@@ -1,38 +1,38 @@
-# Shell v2.2 - Complete Implementation Plan
+# Shell v2.5 - Minimal Implementation Plan
 
 ## Executive Summary
 
-Shell (XSL) is a layered cryptocurrency architecture designed exclusively as a reserve asset for central banks and sovereign wealth funds. Version 2.2 introduces a clear layer separation that enables instant settlement and optional privacy while maintaining a simple, secure foundation.
+Shell (XSL) is a minimal cryptocurrency designed exclusively as a reserve asset for central banks and sovereign wealth funds. Version 2.5 strikes the perfect balance between simplicity and institutional utility, including only essential features like claimable balances, document hashes, and ISO 20022 compatibility.
 
-### Key Design Updates
-- **Layered Architecture**: L0 (base), L0.5 (privacy), L0.7 (custody), L1 (settlement)
-- **Settlement Primitives**: Payment channels and claimable balances from XRP/Stellar
-- **Optional Privacy**: Ring signatures and stealth addresses as soft-fork upgrade
-- **100M Supply Cap**: Distributed via fair-launch mining over 100 years
+### Key Design Principles
+- **Minimal Architecture**: L0 (base), L0.7 (basic custody), L1 (institutional settlement)
+- **UTXO Model**: Proven Bitcoin architecture for auditability
+- **Simple Privacy**: Confidential Transactions only (amounts hidden, flows visible)
+- **Institutional Features**: Claimable balances, document hashes, ISO 20022
+- **Realistic Blocks**: 500KB normal, 1MB maximum for reliable 5-minute propagation
+- **100M Supply Cap**: Simple mining schedule, no pre-allocations
 
 ## Architecture Overview
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│ L1: Instant Settlement Layer                            │
-│ • Payment Channels (XRP-inspired)                       │
-│ • Claimable Balances (Stellar-inspired)               │
-│ • Atomic Swaps & Cross-border Rails                    │
+│ L1: Institutional Settlement Layer                      │
+│ • Bilateral Payment Channels (2-party only)            │
+│ • Claimable Balances (Stellar-style escrow)           │
+│ • Document Hashes (simple commitments)                 │
+│ • ISO 20022 message mapping                            │
+│ • Atomic Swaps (HTLCs)                                 │
 ├─────────────────────────────────────────────────────────┤
-│ L0.7: Custody Script Layer                              │
-│ • MuSig2 Aggregated Multisig                          │
-│ • Vault Covenants (OP_VAULTTEMPLATEVERIFY)            │
-│ • Taproot/MAST for Complex Policies                    │
-├─────────────────────────────────────────────────────────┤
-│ L0.5: Privacy Layer (Future Soft Fork)                  │
-│ • Ring Signatures (Triptych/Seraphis)                 │
-│ • Stealth Addresses                                    │
-│ • View Keys for Selective Disclosure                   │
+│ L0.7: Basic Custody Layer                               │
+│ • Standard Multisig (2-of-3, 3-of-5, 11-of-15)        │
+│ • Time Locks (nLockTime, CLTV)                        │
+│ • Taproot for efficiency                               │
 ├─────────────────────────────────────────────────────────┤
 │ L0: Base Consensus Layer                                │
-│ • RandomX PoW (5-min blocks, 1-2MB)                   │
-│ • Confidential Transactions (amounts hidden)           │
-│ • Fair Launch (no premine)                            │
+│ • RandomX PoW (5-min blocks)                           │
+│ • UTXO Model (Bitcoin-style)                           │
+│ • Confidential Transactions                            │
+│ • 500KB blocks (1MB emergency max)                     │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -42,39 +42,38 @@ Shell (XSL) is a layered cryptocurrency architecture designed exclusively as a r
 | Parameter | Value | Rationale |
 |-----------|-------|-----------|
 | **Ticker** | XSL | Shell |
-| **Supply Cap** | 100,000,000 XSL | Meaningful institutional positions |
-| **Block Time** | 5 minutes | Balance between security and usability |
-| **Block Size** | ~1-2 MB | Perpetual node operation |
-| **Initial Reward** | 95 XSL/block | Fair distribution curve |
+| **Supply Cap** | 100,000,000 XSL | Round number for institutions |
+| **Block Time** | 5 minutes | Balance between speed and security |
+| **Normal Block Size** | 500KB | Reliable global propagation |
+| **Max Block Size** | 1MB | Emergency only with 10x fees |
+| **Initial Reward** | 95 XSL/block | Simple distribution |
 | **Halving** | Every 262,800 blocks (~10 years) | Generational planning |
-| **Consensus** | RandomX PoW + Optional AuxPoW | Geographic distribution |
-| **Tail Emission** | Years 60-100 | Long-term security |
+| **Consensus** | RandomX PoW | CPU-friendly |
+| **Minimum Transaction** | 1 XSL | Institutional focus |
 
 ### Layer Specifications
 
 #### L0: Base Consensus Layer
-- **RandomX PoW**: CPU-friendly, ASIC-resistant
-- **Confidential Transactions**: Pedersen commitments + Bulletproofs
-- **UTXO Model**: With extensions for channels and covenants
-- **Fee Model**: 0.0003 XSL/byte burned, -0.0001 maker rebate
+- **RandomX PoW**: CPU mining, no ASICs
+- **UTXO Model**: Bitcoin-style for simplicity
+- **Confidential Transactions**: Hide amounts only
+- **Simple Fee Model**: 0.001 XSL/byte burned
+- **No Finality Gadget**: Just use confirmations
+- **No Complex Scripts**: Basic operations only
 
-#### L0.5: Privacy Layer (Optional, Future)
-- **Ring Signatures**: Sender unlinkability
-- **Stealth Addresses**: Receiver privacy
-- **View Keys**: Hierarchical disclosure
-- **Activation**: Soft fork after year 2
+#### L0.7: Basic Custody Layer
+- **Standard Multisig**: 2-of-3, 3-of-5, etc.
+- **Time Locks**: nLockTime and CLTV only
+- **Taproot**: For efficiency
+- **No Covenants**: Too complex
+- **No MuSig2**: Standard multisig is sufficient
 
-#### L0.7: Custody Layer
-- **Taproot**: All addresses use witness v1
-- **MuSig2**: Aggregated signatures for multisig
-- **Vault Covenants**: Time-delayed spending rules
-- **Dual Signatures**: Schnorr + optional Dilithium
-
-#### L1: Settlement Layer
-- **Payment Channels**: Unidirectional streaming
-- **Claimable Balances**: Push payments with conditions
-- **Channel Updates**: On-chain state management
-- **Atomic Swaps**: Cross-chain settlement
+#### L1: Institutional Settlement Layer
+- **Bilateral Channels**: 2-party only, no routing
+- **Claimable Balances**: Stellar-style conditional payments
+- **Document Hashes**: Simple OP_HASH256 commitments
+- **ISO 20022**: Basic SWIFT message mapping
+- **Atomic Swaps**: Basic HTLCs
 
 ## Development Phases
 
@@ -82,7 +81,7 @@ Shell (XSL) is a layered cryptocurrency architecture designed exclusively as a r
 
 #### α.1 Base Implementation
 ```go
-// Fork btcd and establish core parameters
+// Fork btcd and simplify
 git clone https://github.com/btcsuite/btcd shell
 cd shell
 
@@ -101,38 +100,32 @@ var MainNetParams = Params{
     RandomXSeedRotation:   2048,
     RandomXMemory:         2 * 1024 * 1024 * 1024, // 2GB
     
-    // Layer activation heights
-    L1ActivationHeight:    0,      // Channels from genesis
-    L05ActivationHeight:   525600, // Privacy after ~10 years
+    // Block size limits
+    MaxBlockSize:          500 * 1024,  // 500KB normal
+    EmergencyBlockSize:    1024 * 1024, // 1MB emergency
 }
 ```
 
 #### α.2 RandomX Integration
 ```go
-// mining/randomx/miner.go
+// mining/randomx.go
 type RandomXMiner struct {
-    cache      *randomx.Cache
-    dataset    *randomx.Dataset
-    vm         *randomx.VM
-    seedHeight int32
+    cache   *randomx.Cache
+    dataset *randomx.Dataset
+    vm      *randomx.VM
 }
 
-func (m *RandomXMiner) Mine(header *wire.BlockHeader, targetDiff *big.Int) bool {
-    nonce := uint64(0)
-    
-    for {
+func (m *RandomXMiner) Mine(header *wire.BlockHeader, target *big.Int) bool {
+    // Simple mining loop
+    for nonce := uint32(0); nonce < maxNonce; nonce++ {
         header.Nonce = nonce
-        hash := m.computeHash(header)
+        hash := m.computeRandomXHash(header)
         
-        if hashMeetsDifficulty(hash, targetDiff) {
+        if hashBeatsDifficulty(hash, target) {
             return true
         }
-        
-        nonce++
-        if nonce > maxNonce {
-            return false
-        }
     }
+    return false
 }
 ```
 
@@ -140,245 +133,154 @@ func (m *RandomXMiner) Mine(header *wire.BlockHeader, targetDiff *big.Int) bool 
 ```go
 // privacy/confidential.go
 type ConfidentialOutput struct {
-    Commitment   PedersenCommitment  // 33 bytes
-    RangeProof   Bulletproof        // Variable size
-    ScriptPubKey []byte             // Taproot script
+    Commitment   [33]byte      // Pedersen commitment
+    RangeProof   []byte        // Bulletproof
+    ScriptPubKey []byte        // Standard script
 }
 
-func CreateConfidentialTx(inputs []Input, outputs []Output) (*MsgTx, error) {
-    // Generate blinding factors
-    blindSum := new(big.Int)
+func CreateConfidentialOutput(amount uint64, script []byte) (*ConfidentialOutput, error) {
+    // Generate blinding factor
+    blind := generateBlindingFactor()
     
-    for i, out := range outputs {
-        blind := generateBlindingFactor()
-        commitment := PedersenCommit(out.Value, blind)
-        
-        // Create range proof
-        proof := BulletproofProve(out.Value, blind)
-        
-        outputs[i].Commitment = commitment
-        outputs[i].RangeProof = proof
-        
-        blindSum.Add(blindSum, blind)
-    }
+    // Create Pedersen commitment
+    commitment := PedersenCommit(amount, blind)
     
-    // Balance blinding factors
-    return balanceTransaction(inputs, outputs, blindSum)
+    // Create range proof
+    proof := BulletproofProve(amount, blind)
+    
+    return &ConfidentialOutput{
+        Commitment:   commitment,
+        RangeProof:   proof,
+        ScriptPubKey: script,
+    }, nil
 }
 ```
 
-#### α.4 Taproot Implementation
+### Phase β: Basic Features (Months 3-6)
+
+#### β.1 Standard Multisig
 ```go
-// txscript/taproot.go
-func BuildTaprootOutput(internalKey *btcec.PublicKey, scripts [][]byte) ([]byte, error) {
-    builder := txscript.NewTapscriptBuilder()
+// txscript/multisig.go
+func CreateMultisigScript(m int, pubkeys [][]byte) ([]byte, error) {
+    builder := NewScriptBuilder()
     
-    // Add script leaves
-    for _, script := range scripts {
-        builder.AddLeaf(txscript.NewBaseTapLeaf(script))
+    // Add m
+    builder.AddOp(ScriptNum(m))
+    
+    // Add public keys
+    for _, key := range pubkeys {
+        builder.AddData(key)
     }
     
-    // Build tree
-    tree := builder.Build()
+    // Add n
+    builder.AddOp(ScriptNum(len(pubkeys)))
     
-    // Compute output key
-    outputKey := txscript.ComputeTaprootOutputKey(internalKey, tree.RootNode.TapHash())
+    // Add CHECKMULTISIG
+    builder.AddOp(OP_CHECKMULTISIG)
     
-    // Create witness v1 output
-    return txscript.NewScriptBuilder().
-        AddOp(txscript.OP_1).
-        AddData(schnorr.SerializePubKey(outputKey)).
-        Script()
+    return builder.Script()
 }
 ```
 
-### Phase β: Liquidity Stack (Months 3-6)
-
-#### β.1 LiquidityReward Program
+#### β.2 Time Locks
 ```go
-// liquidity/reward.go
+// txscript/timelock.go
+func CreateTimeLockScript(lockTime uint32, pubKeyHash []byte) ([]byte, error) {
+    builder := NewScriptBuilder()
+    
+    // Add time lock
+    builder.AddInt64(int64(lockTime))
+    builder.AddOp(OP_CHECKLOCKTIMEVERIFY)
+    builder.AddOp(OP_DROP)
+    
+    // Standard P2PKH after timelock
+    builder.AddOp(OP_DUP)
+    builder.AddOp(OP_HASH160)
+    builder.AddData(pubKeyHash)
+    builder.AddOp(OP_EQUALVERIFY)
+    builder.AddOp(OP_CHECKSIG)
+    
+    return builder.Script()
+}
+```
+
+#### β.3 Fee Structure
+```go
+// mempool/fee.go
 const (
-    RewardPoolSize     = 2000000 * 1e8  // 2% of supply
-    EpochCount         = 12              // quarters
-    EpochBlocks        = 26280           // ~3 months
+    MinFeeRate     = 1000      // 0.001 XSL/byte
+    MinTransaction = 100000000  // 1 XSL minimum
 )
 
-type LiquidityRewardClaim struct {
-    Version         int32
-    EpochIndex      uint8
-    AttestationBlob []byte
-    MerklePath      []byte
-    Output          *TxOut
+func CalculateFee(txSize int) int64 {
+    fee := int64(txSize) * MinFeeRate
+    if fee < MinTransaction {
+        fee = MinTransaction
+    }
+    return fee
+}
+```
+
+### Phase γ: Settlement (Months 6-9)
+
+#### γ.1 Bilateral Channels
+```go
+// channels/bilateral.go
+type BilateralChannel struct {
+    ChannelID    [32]byte
+    Party1       PublicKey
+    Party2       PublicKey
+    Capacity     int64
+    Balance1     int64
+    Balance2     int64
+    Nonce        uint64
 }
 
-func (lrc *LiquidityRewardClaim) Validate(state *blockchain.ChainState) error {
-    // Check epoch validity
-    if lrc.EpochIndex >= EpochCount {
-        return ErrRewardProgramEnded
+func (c *BilateralChannel) CreateOpenTx() (*wire.MsgTx, error) {
+    // Create 2-of-2 multisig
+    script, _ := CreateMultisigScript(2, [][]byte{
+        c.Party1.SerializeCompressed(),
+        c.Party2.SerializeCompressed(),
+    })
+    
+    // Create funding transaction
+    tx := wire.NewMsgTx(wire.TxVersion)
+    tx.AddTxOut(&wire.TxOut{
+        Value:    c.Capacity,
+        PkScript: script,
+    })
+    
+    return tx, nil
+}
+
+func (c *BilateralChannel) UpdateBalance(newBalance1, newBalance2 int64) error {
+    // Verify balance conservation
+    if newBalance1 + newBalance2 != c.Capacity {
+        return ErrInvalidBalance
     }
     
-    // Validate attestation (3-of-5 signatures)
-    attestation, err := DecodeAttestation(lrc.AttestationBlob)
-    if err != nil {
-        return err
-    }
-    
-    sigCount := 0
-    for i, attestor := range KnownAttestors {
-        if attestation.HasSignature(i) {
-            if !attestor.Verify(attestation) {
-                return ErrInvalidAttestorSig
-            }
-            sigCount++
-        }
-    }
-    
-    if sigCount < 3 {
-        return ErrInsufficientAttestors
-    }
-    
-    // Verify merkle inclusion in epoch root
-    epochRoot := state.GetEpochRoot(lrc.EpochIndex)
-    if !VerifyMerklePath(attestation.Hash(), lrc.MerklePath, epochRoot) {
-        return ErrInvalidMerkleProof
-    }
-    
-    // Calculate reward amount
-    weight := calculateMarketMakerWeight(attestation)
-    maxReward := RewardPoolSize / EpochCount
-    reward := (weight * maxReward) / state.GetTotalEpochWeight(lrc.EpochIndex)
-    
-    if lrc.Output.Value > reward {
-        return ErrExcessiveReward
-    }
+    // Update state
+    c.Balance1 = newBalance1
+    c.Balance2 = newBalance2
+    c.Nonce++
     
     return nil
 }
 ```
 
-#### β.2 Fee Structure
+#### γ.2 Claimable Balances (Stellar-Style)
 ```go
-// mempool/fee.go
-type FeeCalculator struct {
-    BaseFeeRate   float64  // 0.0003 XSL/byte
-    MakerRebate   float64  // 0.0001 XSL/byte
-}
-
-func (fc *FeeCalculator) CalculateFee(tx *wire.MsgTx) (fee int64, rebate int64) {
-    size := tx.SerializeSize()
-    baseFee := int64(float64(size) * fc.BaseFeeRate * 1e8)
-    
-    // Check for maker flag in witness
-    if tx.HasWitness && tx.TxWitness[0].MakerFlag {
-        rebate = int64(float64(size) * fc.MakerRebate * 1e8)
-        return baseFee, rebate
-    }
-    
-    return baseFee, 0
-}
-```
-
-### Phase β.5: L1 Settlement Layer (Months 5-6)
-
-#### Payment Channel Implementation
-```go
-// settlement/channels.go
+// claimable/balance.go
 const (
-    OP_CHANNEL_OPEN   = 0xc6
-    OP_CHANNEL_UPDATE = 0xc7
-    OP_CHANNEL_CLOSE  = 0xc8
-)
-
-type PaymentChannel struct {
-    ChannelID    ChannelID
-    Participants [2]PublicKey
-    Capacity     uint64
-    Balance      [2]uint64
-    Nonce        uint64
-    Expiry       uint32
-}
-
-// First-class channel UTXO type
-type ChannelUTXO struct {
-    OutPoint     wire.OutPoint
-    Channel      PaymentChannel
-    LastUpdate   uint32
-    IsOpen       bool
-}
-
-// Channel opening script
-func CreateChannelOpenScript(alice, bob PublicKey, amount uint64) []byte {
-    return NewScriptBuilder().
-        AddOp(OP_CHANNEL_OPEN).
-        AddData(alice.SerializeCompressed()).
-        AddData(bob.SerializeCompressed()).
-        AddInt64(int64(amount)).
-        AddOp(OP_2).
-        AddOp(OP_CHECKMULTISIG).
-        Script()
-}
-
-// Channel update (requires both signatures)
-func CreateChannelUpdateScript(channelID ChannelID, balances [2]uint64, nonce uint64) []byte {
-    return NewScriptBuilder().
-        AddOp(OP_CHANNEL_UPDATE).
-        AddData(channelID[:]).
-        AddInt64(int64(balances[0])).
-        AddInt64(int64(balances[1])).
-        AddInt64(int64(nonce)).
-        Script()
-}
-
-// Consensus validation for channel operations
-func ValidateChannelOp(tx *wire.MsgTx, utxoView *UtxoViewpoint) error {
-    // Extract channel operation
-    op := extractChannelOp(tx)
-    
-    switch op.Type {
-    case OP_CHANNEL_OPEN:
-        return validateChannelOpen(op, tx, utxoView)
-        
-    case OP_CHANNEL_UPDATE:
-        // Verify channel exists
-        channel, err := utxoView.GetChannel(op.ChannelID)
-        if err != nil {
-            return err
-        }
-        
-        // Verify nonce increment
-        if op.Nonce <= channel.Nonce {
-            return ErrInvalidNonce
-        }
-        
-        // Verify balance conservation
-        if op.Balances[0] + op.Balances[1] != channel.Capacity {
-            return ErrUnbalancedChannel
-        }
-        
-        // Verify both signatures
-        return verifyChannelSignatures(op, channel, tx)
-        
-    case OP_CHANNEL_CLOSE:
-        return validateChannelClose(op, tx, utxoView)
-    }
-    
-    return ErrUnknownChannelOp
-}
-```
-
-#### Claimable Balances (Stellar-style)
-```go
-// settlement/claimable.go
-const (
-    OP_CLAIMABLE_CREATE = 0xc9
-    OP_CLAIMABLE_CLAIM  = 0xca
+    OP_CLAIMABLE_CREATE = 0xca
+    OP_CLAIMABLE_CLAIM  = 0xcb
 )
 
 type ClaimableBalance struct {
-    ID          ClaimableID
-    Amount      Commitment
-    Claimants   []Claimant
-    CreateTime  uint32
+    ID         [32]byte
+    Amount     int64
+    Asset      AssetCode
+    Claimants  []Claimant
 }
 
 type Claimant struct {
@@ -386,499 +288,395 @@ type Claimant struct {
     Predicate   ClaimPredicate
 }
 
-type ClaimPredicate struct {
-    Type      PredicateType
-    Timestamp uint32
-    Hash      []byte
+type ClaimPredicate interface {
+    Evaluate(ctx *ClaimContext) bool
+    Serialize() []byte
 }
 
-const (
-    PredicateUnconditional PredicateType = iota
-    PredicateBeforeTime
-    PredicateAfterTime
-    PredicateHashPreimage
-    PredicateAnd
-    PredicateOr
-)
+// Predicate types (inspired by Stellar)
+type PredicateUnconditional struct{}
 
-// Create claimable balance script
-func CreateClaimableBalanceScript(amount uint64, claimants []Claimant) []byte {
-    builder := NewScriptBuilder().
-        AddOp(OP_CLAIMABLE_CREATE).
-        AddInt64(int64(amount)).
-        AddInt64(int64(len(claimants)))
+type PredicateAnd struct {
+    Left, Right ClaimPredicate
+}
+
+type PredicateOr struct {
+    Left, Right ClaimPredicate
+}
+
+type PredicateNot struct {
+    Inner ClaimPredicate
+}
+
+type PredicateBeforeAbsoluteTime struct {
+    Timestamp int64
+}
+
+type PredicateAfterAbsoluteTime struct {
+    Timestamp int64
+}
+
+// Create claimable balance transaction
+func CreateClaimableBalance(amount int64, claimants []Claimant) (*wire.MsgTx, error) {
+    // Generate unique ID
+    id := generateClaimableID()
     
-    // Add each claimant
-    for _, c := range claimants {
-        builder.AddData(c.Destination.SerializeCompressed())
-        builder.AddData(c.Predicate.Serialize())
+    // Build script
+    builder := NewScriptBuilder()
+    builder.AddOp(OP_CLAIMABLE_CREATE)
+    builder.AddData(id[:])
+    builder.AddInt64(amount)
+    builder.AddInt64(int64(len(claimants)))
+    
+    for _, claimant := range claimants {
+        builder.AddData(claimant.Destination.SerializeCompressed())
+        builder.AddData(claimant.Predicate.Serialize())
     }
     
-    return builder.Script()
+    script := builder.Script()
+    
+    // Create transaction
+    tx := wire.NewMsgTx(wire.TxVersion)
+    tx.AddTxOut(&wire.TxOut{
+        Value:    amount,
+        PkScript: script,
+    })
+    
+    return tx, nil
 }
 
 // Claim with predicate satisfaction
-func CreateClaimScript(balanceID ClaimableID, destination PublicKey, proof []byte) []byte {
-    return NewScriptBuilder().
-        AddOp(OP_CLAIMABLE_CLAIM).
-        AddData(balanceID[:]).
-        AddData(destination.SerializeCompressed()).
-        AddData(proof).
-        Script()
+func ClaimBalance(balanceID [32]byte, destination PublicKey, proof []byte) (*wire.MsgTx, error) {
+    builder := NewScriptBuilder()
+    builder.AddOp(OP_CLAIMABLE_CLAIM)
+    builder.AddData(balanceID[:])
+    builder.AddData(destination.SerializeCompressed())
+    builder.AddData(proof) // Time proof or hash preimage
+    
+    return createTxWithScript(builder.Script())
 }
 ```
 
-### Phase γ: Security Hardening (Months 6-9)
-
-#### γ.1 Vault Covenants
+#### γ.3 Document Hashes
 ```go
-// covenants/vault.go
-const OP_VAULTTEMPLATEVERIFY = 0xc5
+// documents/hash.go
+const (
+    OP_DOC_HASH = 0xcc
+)
 
-type VaultTemplate struct {
-    Version         uint16
-    CSVTimeout      uint32   // Blocks until cold recovery
-    HotThreshold    uint8    // e.g., 11 for 11-of-15
-    ColdScriptHash  [20]byte // Recovery address
+type DocumentHash struct {
+    Hash      [32]byte
+    Timestamp int64
+    Reference string // External reference
 }
 
-func opVaultTemplateVerify(stack *Stack, tx *wire.MsgTx, idx int) error {
-    templateHash := stack.Pop()
+// Create document hash commitment
+func CreateDocumentHash(docHash [32]byte, reference string) (*wire.MsgTx, error) {
+    builder := NewScriptBuilder()
+    builder.AddOp(OP_DOC_HASH)
+    builder.AddData(docHash[:])
+    builder.AddInt64(time.Now().Unix())
+    builder.AddData([]byte(reference))
     
-    // Extract template from transaction
-    template := extractVaultTemplate(tx.TxOut[idx])
-    
-    // Verify hash
-    if !bytes.Equal(template.Hash(), templateHash) {
-        return ErrTemplateMismatch
+    return createTxWithScript(builder.Script())
+}
+
+// Simple escrow with document condition
+func CreateDocumentEscrow(amount int64, docHash [32]byte, recipient PublicKey, expiry int64) (*wire.MsgTx, error) {
+    // Create hash predicate
+    hashPred := &PredicateHashPreimage{
+        Hash: docHash,
     }
     
-    // Enforce vault rules
-    if tx.LockTime < template.CSVTimeout {
-        // Must satisfy hot threshold
-        sigCount := countValidSignatures(tx.TxIn[idx])
-        if sigCount < template.HotThreshold {
-            return ErrInsufficientSigs
+    // Add time limit
+    timePred := &PredicateBeforeAbsoluteTime{
+        Timestamp: expiry,
+    }
+    
+    // Combine predicates
+    finalPred := &PredicateAnd{
+        Left:  hashPred,
+        Right: timePred,
+    }
+    
+    claimant := Claimant{
+        Destination: recipient,
+        Predicate:   finalPred,
+    }
+    
+    return CreateClaimableBalance(amount, []Claimant{claimant})
+}
+```
+
+#### γ.4 ISO 20022 Integration
+```go
+// iso20022/bridge.go
+type ISO20022Message struct {
+    Type       MessageType
+    Reference  string
+    Amount     int64
+    Currency   string
+    Sender     BankIdentifier
+    Receiver   BankIdentifier
+    ValueDate  time.Time
+}
+
+type MessageType string
+const (
+    PACS008 MessageType = "pacs.008.001.08" // Credit transfer
+    PACS009 MessageType = "pacs.009.001.08" // FI transfer
+    CAMT056 MessageType = "camt.056.001.08" // Cancellation
+    PAIN001 MessageType = "pain.001.001.09" // Initiation
+)
+
+type BankIdentifier struct {
+    BIC        string
+    Name       string
+    Account    string
+}
+
+// Map Shell transaction to ISO 20022
+func MapToISO20022(tx *wire.MsgTx, msgType MessageType) (*ISO20022Message, error) {
+    msg := &ISO20022Message{
+        Type:      msgType,
+        Reference: tx.TxHash().String()[:16], // First 16 chars
+        Currency:  "XSL",
+        ValueDate: time.Now(),
+    }
+    
+    // Extract amount (requires view key for CT)
+    if viewKey != nil {
+        amount, err := DecryptAmount(tx.TxOut[0], viewKey)
+        if err != nil {
+            return nil, err
         }
+        msg.Amount = amount
     }
     
-    return nil
+    // Map sender/receiver from metadata
+    msg.Sender = extractBankID(tx.TxIn[0])
+    msg.Receiver = extractBankID(tx.TxOut[0])
+    
+    return msg, nil
 }
 
-// Example: Central bank vault with 11-of-15 hot, 3-of-5 cold
-func CreateCentralBankVault(hotKeys []PublicKey, coldKeys []PublicKey) ([]byte, error) {
-    // Hot path: 11-of-15 multisig
-    hotScript := CreateMultisigScript(11, hotKeys)
-    
-    // Cold path: 3-of-5 after 30 days
-    coldScript := NewScriptBuilder().
-        AddInt64(4320). // ~30 days
-        AddOp(OP_CHECKSEQUENCEVERIFY).
-        AddOp(OP_DROP).
-        Script()
-    coldScript = append(coldScript, CreateMultisigScript(3, coldKeys)...)
-    
-    // Build Taproot with vault covenant
-    builder := NewTaprootBuilder()
-    builder.AddLeaf(hotScript)
-    builder.AddLeaf(coldScript)
-    
-    return builder.Build()
+// Generate SWIFT-compatible reference
+func GenerateSWIFTReference(tx *wire.MsgTx) string {
+    hash := tx.TxHash()
+    // Format: XSLYYMMDDHHMMSS + 6 chars from hash
+    return fmt.Sprintf("XSL%s%s", 
+        time.Now().Format("060102150405"),
+        hex.EncodeToString(hash[:3]))
+}
+
+// Settlement finality proof
+func GenerateSettlementProof(tx *wire.MsgTx, confirmations int) *SettlementProof {
+    return &SettlementProof{
+        TransactionID:   tx.TxHash().String(),
+        BlockHeight:     getBlockHeight(tx),
+        Confirmations:   confirmations,
+        Timestamp:       time.Now(),
+        ISOReference:    GenerateSWIFTReference(tx),
+        Irrevocable:     confirmations >= 6,
+    }
 }
 ```
 
-#### γ.2 MuSig2 Aggregation
+#### γ.5 Atomic Swaps
 ```go
-// crypto/musig2.go
-type MuSig2Session struct {
-    Participants []PublicKey
-    Threshold    int
-    Nonces       map[PublicKey]MuSig2Nonce
-    PartialSigs  map[PublicKey]PartialSig
+// swaps/atomic.go
+type AtomicSwap struct {
+    SecretHash   [32]byte
+    Sender       PublicKey
+    Recipient    PublicKey
+    Timeout      uint32
+    Amount       int64
 }
 
-// 11-of-15 aggregation example
-func (s *MuSig2Session) AggregateSignatures() (*schnorr.Signature, error) {
-    if len(s.PartialSigs) < s.Threshold {
-        return nil, ErrInsufficientPartialSigs
-    }
+func (a *AtomicSwap) CreateHTLC() ([]byte, error) {
+    builder := NewScriptBuilder()
     
-    // Compute aggregate nonce
-    aggNonce := s.computeAggregateNonce()
+    // If recipient knows secret
+    builder.AddOp(OP_IF)
+    builder.AddOp(OP_HASH256)
+    builder.AddData(a.SecretHash[:])
+    builder.AddOp(OP_EQUALVERIFY)
+    builder.AddData(a.Recipient.SerializeCompressed())
+    builder.AddOp(OP_CHECKSIG)
     
-    // Sum partial signatures
-    aggSig := new(big.Int)
-    for _, partial := range s.PartialSigs {
-        aggSig.Add(aggSig, partial.S)
-    }
-    aggSig.Mod(aggSig, btcec.S256().N)
+    // Else timeout refund to sender
+    builder.AddOp(OP_ELSE)
+    builder.AddInt64(int64(a.Timeout))
+    builder.AddOp(OP_CHECKLOCKTIMEVERIFY)
+    builder.AddOp(OP_DROP)
+    builder.AddData(a.Sender.SerializeCompressed())
+    builder.AddOp(OP_CHECKSIG)
     
-    return schnorr.NewSignature(aggNonce.X, aggSig), nil
-}
-```
-
-#### γ.3 AuxPoW Implementation
-```go
-// mining/auxpow.go
-type AuxPoWBlock struct {
-    Header          wire.BlockHeader
-    AuxData         AuxPoWData
-}
-
-type AuxPoWData struct {
-    ParentCoinbase  *wire.MsgTx
-    MerkleBranch    []chainhash.Hash
-    ParentBlock     wire.BlockHeader
-    ChainIndex      uint32
-}
-
-func ValidateAuxPoW(block *AuxPoWBlock) error {
-    // Find XSL commitment in parent coinbase
-    commitment := findCommitment(block.AuxData.ParentCoinbase, "XSL")
-    if commitment == nil {
-        return ErrNoCommitment
-    }
+    builder.AddOp(OP_ENDIF)
     
-    // Verify commitment matches our block
-    expectedHash := block.Header.BlockHash()
-    if !bytes.Equal(commitment, expectedHash[:]) {
-        return ErrCommitmentMismatch
-    }
-    
-    // Verify merkle path to Bitcoin block
-    root := computeMerkleRoot(commitment, block.AuxData.MerkleBranch)
-    if root != block.AuxData.ParentBlock.MerkleRoot {
-        return ErrInvalidMerkleProof
-    }
-    
-    // Verify work exceeds our target
-    parentWork := blockchain.CalcWork(block.AuxData.ParentBlock.Bits)
-    ourTarget := blockchain.CompactToBig(block.Header.Bits)
-    
-    if parentWork.Cmp(ourTarget) < 0 {
-        return ErrInsufficientWork
-    }
-    
-    return nil
+    return builder.Script()
 }
 ```
 
-#### γ.4 Fast-Sync with Compact Filters
-```go
-// sync/fastSync.go
-type CompactFilter struct {
-    Type       FilterType
-    BlockHash  chainhash.Hash
-    NumItems   uint32
-    Key        [16]byte  // SipHash key
-    Compressed []byte    // Golomb-Rice encoded
-}
-
-// BIP-158 style with commitment support
-func BuildCompactFilter(block *wire.MsgBlock) (*CompactFilter, error) {
-    items := make([][]byte, 0)
-    
-    for _, tx := range block.Transactions {
-        for _, out := range tx.TxOut {
-            // Include script and commitment
-            item := append(out.PkScript, out.Commitment.Bytes()...)
-            items = append(items, item)
-        }
-    }
-    
-    // Build Golomb-Rice coded filter
-    key := deriveFilterKey(block.Header.BlockHash())
-    compressed := golombEncode(items, key, 19) // P=19
-    
-    return &CompactFilter{
-        Type:       FilterBasic,
-        BlockHash:  block.Header.BlockHash(),
-        NumItems:   uint32(len(items)),
-        Key:        key,
-        Compressed: compressed,
-    }, nil
-}
-
-// AssumeUTXO snapshot
-type UTXOSnapshot struct {
-    Version           uint32
-    Height            int32
-    UTXORoot          chainhash.Hash
-    TotalSupply       uint64
-    RandomXSeed       [32]byte
-    ChannelStateRoot  chainhash.Hash  // L1 state
-    Signatures        []SnapshotSig
-}
-
-func (s *UTXOSnapshot) Validate() error {
-    // Require 3+ maintainer signatures
-    validSigs := 0
-    for _, sig := range s.Signatures {
-        if ValidateMaintainerSig(s, sig) {
-            validSigs++
-        }
-    }
-    
-    if validSigs < 3 {
-        return ErrInsufficientMaintainerSigs
-    }
-    
-    return nil
-}
-```
-
-### Phase δ: Launch Prep (Months 9-12)
+### Phase δ: Launch Preparation (Months 9-12)
 
 #### δ.1 Genesis Block
 ```go
-// genesis/genesis.go
-func CreateGenesisBlock() *wire.MsgBlock {
-    // Constitution hash + timestamp proof
-    constitutionHash := sha256.Sum256([]byte(ConstitutionText))
-    coinbaseData := fmt.Sprintf(
-        "FT 2025-08-01: Digital Gold for Neo-Mercantilism | Constitution: %x",
-        constitutionHash,
-    )
-    
-    // No premine - unspendable output
-    genesisCoinbase := &wire.MsgTx{
-        Version: 1,
-        TxIn: []*wire.TxIn{{
-            PreviousOutPoint: wire.OutPoint{
-                Hash:  chainhash.Hash{},
-                Index: 0xffffffff,
-            },
-            SignatureScript: []byte(coinbaseData),
-            Sequence:        0xffffffff,
-        }},
-        TxOut: []*wire.TxOut{{
-            Value: 0,
-            PkScript: []byte{txscript.OP_RETURN},
-        }},
-    }
-    
-    genesis := &wire.MsgBlock{
-        Header: wire.BlockHeader{
-            Version:    1,
-            PrevBlock:  chainhash.Hash{},
-            Timestamp:  time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
-            Bits:       0x1d00ffff, // Initial difficulty
-        },
-        Transactions: []*wire.MsgTx{genesisCoinbase},
-    }
-    
-    return genesis
+// genesis/block.go
+var genesisBlock = wire.MsgBlock{
+    Header: wire.BlockHeader{
+        Version:    1,
+        PrevBlock:  chainhash.Hash{},
+        MerkleRoot: genesisMerkleRoot,
+        Timestamp:  time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+        Bits:       0x1d00ffff, // Starting difficulty
+        Nonce:      0,           // To be mined
+    },
+    Transactions: []*wire.MsgTx{genesisCoinbaseTx},
+}
+
+var genesisCoinbaseTx = &wire.MsgTx{
+    Version: 1,
+    TxIn: []*wire.TxIn{{
+        PreviousOutPoint: wire.OutPoint{Index: 0xffffffff},
+        SignatureScript: []byte("Shell Reserve: Digital Gold for the 21st Century"),
+    }},
+    TxOut: []*wire.TxOut{{
+        Value:    0, // No premine
+        PkScript: []byte{OP_RETURN},
+    }},
 }
 ```
 
-#### δ.2 Network Configuration
+#### δ.2 Network Testing
 ```go
-// network/config.go
-type NetworkConfig struct {
-    // Seed nodes across continents
-    SeedNodes []string{
-        "seed1.shell.org",     // US East
-        "seed2.shell.org",     // Europe
-        "seed3.shell.org",     // Asia
-        "seed4.shell.org",     // US West
-        "seed5.shell.org",     // South America
-    }
+// test/network.go
+func TestBlockPropagation(t *testing.T) {
+    // Test 500KB block propagation
+    block := createTestBlock(500 * 1024)
     
-    // Tor v3 addresses
-    TorSeeds []string{
-        "xsl7nz5h3qpuqhhuxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.onion",
-        "xsl8mw4j7rququjjuyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy.onion",
-    }
+    start := time.Now()
+    propagateBlock(block)
+    duration := time.Since(start)
     
-    // I2P addresses
-    I2PSeeds []string{
-        "xsl-seed-1.i2p",
-        "xsl-seed-2.i2p",
+    // Should propagate globally in <30 seconds
+    if duration > 30*time.Second {
+        t.Errorf("Block propagation too slow: %v", duration)
     }
 }
 ```
 
-#### δ.3 Testing Framework
-```go
-// test/integration_test.go
-func TestFullLifecycle(t *testing.T) {
-    // 1. Test RandomX mining
-    t.Run("Mining", func(t *testing.T) {
-        miner := NewRandomXMiner()
-        block := miner.MineBlock(prevBlock, txs)
-        assert.True(t, ValidatePoW(block))
-    })
-    
-    // 2. Test confidential transactions
-    t.Run("ConfidentialTx", func(t *testing.T) {
-        tx := CreateConfidentialTx(inputs, outputs)
-        assert.True(t, ValidateRangeProofs(tx))
-        assert.True(t, VerifyBalance(tx))
-    })
-    
-    // 3. Test payment channels
-    t.Run("PaymentChannel", func(t *testing.T) {
-        // Open channel
-        openTx := CreateChannelOpen(alice, bob, 1000)
-        assert.NoError(t, ValidateChannelOp(openTx))
-        
-        // Update channel
-        updateTx := CreateChannelUpdate(channelID, [2]uint64{600, 400}, 1)
-        assert.NoError(t, ValidateChannelOp(updateTx))
-        
-        // Close channel
-        closeTx := CreateChannelClose(channelID)
-        assert.NoError(t, ValidateChannelOp(closeTx))
-    })
-    
-    // 4. Test vault covenant
-    t.Run("VaultCovenant", func(t *testing.T) {
-        vault := CreateCentralBankVault(hotKeys, coldKeys)
-        
-        // Test hot spend
-        hotSpend := CreateVaultSpend(vault, hotSigs)
-        assert.NoError(t, ValidateVaultSpend(hotSpend))
-        
-        // Test cold recovery
-        coldSpend := CreateVaultRecovery(vault, coldSigs, timeout)
-        assert.NoError(t, ValidateVaultSpend(coldSpend))
-    })
-}
-```
+#### δ.3 Security Audit Checklist
+- [ ] RandomX implementation review
+- [ ] Confidential Transaction verification
+- [ ] Consensus rule validation
+- [ ] P2P network security
+- [ ] RPC API security
+- [ ] Key management
+- [ ] Transaction validation
+- [ ] Block validation
+- [ ] Fee calculation
+- [ ] Supply cap enforcement
 
 ## Implementation Timeline
 
 ```
 Month 0-3: Core Chain (α)
 ├── Week 1-4: Fork btcd, integrate RandomX
-├── Week 5-8: Implement Taproot + Confidential Txs
-├── Week 9-10: Dual signatures (Schnorr + Dilithium)
-├── Week 11-12: Fee model + basic testing
+├── Week 5-8: UTXO + Confidential Transactions
+├── Week 9-10: Basic Taproot
+├── Week 11-12: Fee model + testing
 
-Month 3-6: Liquidity Stack (β)
-├── Week 13-16: LiquidityReward program
-├── Week 17-18: Attestor integration
-├── Week 19-20: Alliance coordination APIs
-├── Week 21-24: L1 Settlement primitives
+Month 3-6: Basic Features (β)
+├── Week 13-15: Standard multisig
+├── Week 16-18: Time locks
+├── Week 19-21: Document hashes
+├── Week 22-24: Basic testing
 
-Month 5-6: Settlement Layer (β.5)
-├── Week 21-22: Payment channel opcodes
-├── Week 23-24: Claimable balance implementation
-
-Month 6-9: Security Hardening (γ)
-├── Week 25-28: Vault covenants + MuSig2
-├── Week 29-32: AuxPoW relay implementation
-├── Week 33-36: Compact filters + fast-sync
+Month 6-9: Settlement (γ)
+├── Week 25-26: Bilateral channels
+├── Week 27-28: Claimable balances (Stellar-style)
+├── Week 29-30: Document hash commitments
+├── Week 31-32: ISO 20022 mapping
+├── Week 33-34: Atomic swaps
+├── Week 35-36: Integration testing
 
 Month 9-12: Launch Prep (δ)
-├── Week 37-40: Security audits (3 firms)
-├── Week 41-44: Multi-implementation testing
-├── Week 45-48: Documentation + deployment prep
-└── Fair Launch: 2026-01-01
+├── Week 37-39: Security audits
+├── Week 40-42: Network testing
+├── Week 43-45: Documentation
+├── Week 46-48: Genesis mining
+└── Launch: 2026-01-01 00:00 UTC
 ```
 
 ## Team Structure
 
-### Core Development (10-12 people)
-- **Lead Architect**: Overall design, consensus
-- **Protocol Engineers (2)**: Core blockchain, RandomX
-- **Cryptography Lead**: Privacy, signatures, proofs
-- **Settlement Engineer**: L1 channels, atomic swaps
-- **Security Engineers (2)**: Covenants, formal verification
-- **Network Engineer**: P2P, Tor/I2P, AuxPoW
-- **Integration Engineers (2)**: APIs, compliance tools
+### Core Development (8-10 people)
+- **Lead Developer**: Architecture and consensus
+- **Protocol Engineer**: Core blockchain
+- **Cryptography Lead**: CT implementation
+- **Settlement Lead**: Channels and claimables
+- **ISO 20022 Expert**: SWIFT integration
+- **Network Engineer**: P2P and propagation
 - **QA Lead**: Testing framework
 - **Technical Writer**: Documentation
 
-### External Teams
-- **Rust Implementation** (4 people): Alternative client
-- **C++ Implementation** (4 people): Bitcoin Core fork
-- **Attestor Integration** (2 people): Kaiko, Coin Metrics
-
-### Advisory Board
-- Central bank technical advisor
-- RandomX expert (Monero team)
-- MuSig2 expert (Blockstream)
-- Formal verification specialist
+### External Support
+- **Security Auditors**: 2 firms
+- **Legal Counsel**: Regulatory compliance
 
 ## Key Dependencies
 
 ```yaml
-# go.mod for reference implementation
-module github.com/shell/shell-go
+# Minimal dependencies
+module github.com/shell/shell
 
 go 1.21
 
 require (
     github.com/btcsuite/btcd v0.24.0
-    github.com/btcsuite/btcd/btcec/v2 v2.3.2
+    github.com/btcsuite/btcutil v1.1.5
     github.com/nguyenvantuan2391996/go-randomx v1.0.0
-    github.com/cloudflare/circl v1.3.7              # Dilithium
-    github.com/deroproject/derohe v0.0.0            # Pedersen reference  
-    github.com/btcsuite/btcd/btcutil v1.1.5
-    github.com/emirpasic/gods v1.18.1               # Data structures
-    github.com/cretz/bine v0.2.0                   # Tor v3
-    github.com/mit-dci/utreexo v0.0.0              # UTXO commitments
+    github.com/deroproject/derohe v0.0.0  # Bulletproofs
+    github.com/stellar/go v0.0.0          # Claimable balance reference
+    github.com/moov-io/iso20022 v0.0.0   # ISO message parsing
     github.com/stretchr/testify v1.8.4
-    golang.org/x/crypto v0.14.0                     # Additional crypto
 )
 ```
 
 ## Success Metrics
 
-### Technical Metrics
-- **Code Coverage**: >85% for consensus code
-- **Formal Verification**: Core opcodes verified
-- **Performance**: 5-minute blocks achieved consistently
-- **Network**: 100+ nodes across 20+ countries at launch
+### Technical
+- Block propagation <30 seconds globally
+- Transaction validation <10ms
+- Claimable balance operations <20ms
+- ISO 20022 mapping <5ms
+- 99.9% uptime
 
-### Adoption Metrics (Year 1)
-- **Hash Rate**: Equivalent to 10,000 CPUs
-- **Liquidity**: $1B+ daily volume via alliance
-- **Institutional Nodes**: 10+ central banks/SWFs
-- **Layer 2 Development**: 2+ Lightning-style implementations
+### Adoption (Year 1)
+- 20+ institutional nodes
+- $1B+ daily volume
+- 5+ central banks testing
+- 10+ trade finance deals
+- 3+ SWIFT member banks
 
 ## Risk Mitigation
 
 ### Technical Risks
-1. **RandomX ASIC Development**
-   - Mitigation: Seed rotation, algorithm tweaks
-   
-2. **Channel Complexity**
-   - Mitigation: Simple unidirectional design first
-   
-3. **Privacy Soft Fork Resistance**
-   - Mitigation: Optional L0.5 layer, not required
+1. **Block Propagation**: Keep blocks small (500KB)
+2. **CT Complexity**: Use proven Bulletproofs
+3. **Claimable Balance State**: Efficient UTXO indexing
+4. **ISO 20022 Compatibility**: Work with SWIFT experts
 
 ### Market Risks
-1. **Liquidity Bootstrap Failure**
-   - Mitigation: Alliance pre-commitments
-   
-2. **Competition from CBDCs**
-   - Mitigation: Position as complement, not competitor
-
-## Post-Launch Roadmap
-
-### Year 1: Foundation
-- Exchange integrations
-- Central bank pilots
-- Layer 2 payment networks
-- Cross-chain atomic swaps
-
-### Year 2-3: Expansion
-- Privacy layer activation (L0.5)
-- Advanced covenant types
-- Regulatory framework development
-- Institutional custody standards
-
-### Year 5+: Maturity
-- AuxPoW sunset (if native hash sufficient)
-- Quantum signature migration
-- Constitutional review process
-- Potential hard cap adjustment (requires 90% consensus)
+1. **Low Adoption**: Focus on institutions only
+2. **Regulatory Issues**: Full compliance built-in
+3. **Competition**: Unique institutional focus
 
 ## Conclusion
 
-Shell v2.2 delivers a complete reserve asset infrastructure through careful layer separation. The L0 foundation remains simple and secure, while L1 provides the settlement capabilities institutions need. By incorporating the best ideas from XRP/Stellar as optional layers rather than consensus changes, Shell Reserve offers central banks a trusted digital gold alternative without sacrificing decentralization.
+Shell v2.5 achieves the perfect balance: maximum simplicity with essential institutional features. Claimable balances enable escrow and conditional payments. Document hashes provide audit trails without trust. ISO 20022 ensures SWIFT compatibility. All implemented with minimal complexity.
 
-The fair launch model ensures legitimacy, the liquidity reward program bootstraps professional markets, and the multi-year implementation timeline allows for thorough security review. This is digital gold for the 21st century: boring, reliable, and built to last.
+This is digital gold built for the institutions that will actually use it. No special privileges, no liquidity rewards, no trusted third parties - just pure proof-of-work and essential features.
+
+**Essential features, eternal reliability.**

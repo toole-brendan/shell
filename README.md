@@ -1,11 +1,11 @@
  # Shell: A Layered Digital Reserve Asset for the 21st Century
 
-**Version 2.2**  
+**Version 2.5**  
 **June 2025**
 
 ## Abstract
 
-Shell (XSL) is a cryptocurrency architected exclusively as a reserve asset for central banks, sovereign wealth funds, and large financial institutions. By implementing a layered design that separates consensus, privacy, custody, and settlement functions, Shell Reserve delivers institutional-grade functionality while maintaining the censorship resistance and political neutrality essential for a global reserve asset.
+Shell (XSL) is a cryptocurrency architected exclusively as a reserve asset for central banks, sovereign wealth funds, and large financial institutions. By implementing a minimal layered design that separates consensus, custody, and settlement functions, Shell Reserve delivers institutional-grade functionality while maintaining the simplicity and reliability essential for a global reserve asset.
 
 Unlike existing cryptocurrencies that attempt to serve multiple use cases, Shell Reserve optimizes solely for multi-decade balance sheet holdings. This focused approach enables design decisions that prioritize security, predictability, and auditability over scalability or innovation, creating a true digital analogue to gold reserves.
 
@@ -44,20 +44,20 @@ Yet existing alternatives fall short:
 
 ### 1.2 Shell's Solution
 
-Shell Reserve provides what none of these alternatives can: a politically neutral, technically robust digital reserve asset designed specifically for institutional balance sheets. By combining proven blockchain primitives with institutional-grade features in a layered architecture, Shell Reserve creates "digital gold" that central banks can hold with confidence for generations.
+Shell Reserve provides what none of these alternatives can: a politically neutral, technically robust digital reserve asset designed specifically for institutional balance sheets. By combining proven blockchain primitives with institutional-grade features in a minimal layered architecture, Shell Reserve creates "digital gold" that central banks can hold with confidence for generations.
 
 Key innovations include:
-- **Layered design** separating core consensus from advanced features
+- **Minimal design** with only essential features
 - **Settlement primitives** enabling instant cross-border transfers
-- **Vault covenants** for secure institutional custody
-- **Optional privacy** preserving sovereignty while enabling compliance
+- **Trade documentation** via simple hash commitments
+- **ISO 20022** compatibility for SWIFT integration
 - **Fair launch** ensuring no privileged parties or premine
 
 ## 2. Design Philosophy
 
 ### 2.1 Core Principles
 
-1. **Radical Simplicity**: Every feature must prove it cannot exist safely off-chain
+1. **Radical Simplicity**: Every feature must prove absolutely essential
 2. **Generational Thinking**: Design for 100-year operation, not next quarter
 3. **Institutional First**: Optimize for central banks, not retail users
 4. **Boring is Beautiful**: Stability and predictability over innovation
@@ -67,10 +67,10 @@ Key innovations include:
 
 Shell Reserve has a single, unwavering mandate: **store value securely for decades**. This focus enables design decisions impossible for general-purpose cryptocurrencies:
 
-- **Reject scalability**: 3-4 transactions per minute is sufficient
+- **Reject scalability**: 10-20 transactions per minute is sufficient for institutional use
 - **Embrace high fees**: Deters non-reserve usage
-- **Eliminate complexity**: No smart contracts or DeFi
-- **Prioritize finality**: Deep confirmations over fast blocks
+- **Eliminate complexity**: No smart contracts, no DeFi, minimal scripts
+- **Prioritize reliability**: Simple proven primitives only
 - **Constitutional immutability**: Changes require overwhelming consensus
 
 ### 2.3 What Shell Reserve Is Not
@@ -86,29 +86,27 @@ To understand Shell Reserve, one must understand what it explicitly rejects:
 
 ### 3.1 Overview
 
-Shell Reserve implements a four-layer architecture that cleanly separates concerns:
+Shell Reserve implements a minimal three-layer architecture:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│ L1: Instant Settlement Layer                            │
-│ • Payment Channels for streaming settlements            │
-│ • Claimable Balances for push payments                 │
+│ L1: Institutional Settlement Layer                      │
+│ • Bilateral Payment Channels (2-party only)            │
+│ • Claimable Balances (Stellar-style escrow)           │
 │ • Atomic Swaps for cross-chain settlement              │
+│ • Document Hashes (no attestors)                       │
+│ • ISO 20022 message compatibility                      │
 ├─────────────────────────────────────────────────────────┤
-│ L0.7: Custody Script Layer                              │
-│ • MuSig2 aggregated signatures (11-of-15)              │
-│ • Vault Covenants with time-delayed recovery           │
-│ • Taproot for policy privacy                           │
-├─────────────────────────────────────────────────────────┤
-│ L0.5: Privacy Layer (Optional, Future)                  │
-│ • Ring Signatures for sender privacy                    │
-│ • Stealth Addresses for receiver privacy               │
-│ • View Keys for selective disclosure                   │
+│ L0.7: Basic Custody Layer                               │
+│ • Standard Multisig (2-of-3, 3-of-5, etc.)            │
+│ • Time-locked transactions                             │
+│ • Taproot for efficiency                               │
 ├─────────────────────────────────────────────────────────┤
 │ L0: Base Consensus Layer                                │
 │ • RandomX Proof-of-Work                                │
+│ • UTXO model (Bitcoin-like)                            │
 │ • Confidential Transactions (amounts hidden)           │
-│ • UTXO model with covenant extensions                  │
+│ • 500KB-1MB blocks for reliable propagation            │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -117,30 +115,26 @@ Shell Reserve implements a four-layer architecture that cleanly separates concer
 #### L0: Base Consensus Layer
 The foundation provides immutable, censorship-resistant value storage through:
 - **RandomX PoW**: CPU-optimized mining ensuring geographic distribution
+- **UTXO Model**: Proven Bitcoin architecture for auditability
 - **Confidential Transactions**: Amounts hidden via Pedersen commitments
-- **5-minute blocks**: Optimal balance of security and usability
-- **1-2 MB blocks**: Perpetual operation on commodity hardware
+- **5-minute blocks**: Balance between confirmation speed and security
+- **500KB blocks**: Reliable global propagation (1MB emergency maximum)
+- **No finality gadget**: Keep it simple, use confirmations like Bitcoin
 
-#### L0.5: Privacy Layer (Future Soft Fork)
-Optional privacy features activated after network maturity:
-- **Ring Signatures**: Hide sender among decoy inputs
-- **Stealth Addresses**: One-time addresses for receivers
-- **View Keys**: Hierarchical disclosure for compliance
-- **Activation**: Soft fork after ~2 years, not mandatory
+#### L0.7: Basic Custody Layer
+Simple multisignature for institutional custody:
+- **Standard Multisig**: 2-of-3, 3-of-5, 11-of-15 configurations
+- **Time Locks**: Simple nLockTime for delayed spending
+- **Taproot**: Efficiency and privacy for spending conditions
+- **No complex covenants**: Just basic multisig and timelocks
 
-#### L0.7: Custody Script Layer
-Institutional-grade key management via Taproot:
-- **MuSig2**: Aggregate signatures for efficient multisig
-- **Vault Covenants**: Enforce time-delayed spending policies
-- **Dual Signatures**: Schnorr today, quantum-ready tomorrow
-- **Policy Privacy**: Complex rules hidden until used
-
-#### L1: Settlement Layer
-Fast, final settlement without compromising L0 security:
-- **Payment Channels**: Streaming payments between institutions
-- **Claimable Balances**: Conditional push payments
-- **Atomic Swaps**: Trustless cross-chain exchanges
-- **Sub-second UX**: With on-chain finality backup
+#### L1: Institutional Settlement Layer
+Essential settlement features for central banks and institutions:
+- **Bilateral Channels**: Direct 2-party channels only
+- **Claimable Balances**: Stellar-style conditional payments
+- **Document Hashes**: Simple hash commitments (no attestors)
+- **ISO 20022**: Basic SWIFT message compatibility
+- **Atomic Swaps**: Cross-chain settlement
 
 ## 4. Technical Specifications
 
@@ -151,24 +145,29 @@ Fast, final settlement without compromising L0 security:
 | **Symbol** | XSL | Shell Reserve |
 | **Total Supply** | 100,000,000 XSL | Meaningful institutional holdings |
 | **Block Time** | 5 minutes | Security/usability balance |
-| **Block Size** | ~1-2 MB | Sustainable node operation |
+| **Block Size** | ~500KB (normal) | Reliable global propagation |
+| **Max Block Size** | 1MB (absolute) | Emergency capacity only |
 | **Initial Reward** | 95 XSL/block | ~4.5% annual inflation initially |
 | **Halving Schedule** | 262,800 blocks (~10 years) | Generational planning |
-| **Precision** | 8 decimal places | Sufficient for large transfers |
+| **Precision** | 8 decimal places | Same as Bitcoin |
 | **Launch** | January 1, 2026 | Fair launch, no premine |
+| **Minimum Transaction** | 1 XSL | Institutional use only |
 
 ### 4.2 Consensus Rules
 
-Shell Reserve uses a modified Bitcoin consensus with institutional extensions:
+Shell Reserve uses simplified Bitcoin consensus with institutional extensions:
 
 ```
 Consensus = {
     RandomX Proof-of-Work
+    + UTXO Model (Bitcoin-style)
     + Taproot (BIP 340/341/342)
-    + Confidential Transactions
-    + Vault Covenants (OP_VAULTTEMPLATEVERIFY)
-    + Channel Primitives (OP_CHANNEL_*)
+    + Confidential Transactions (amounts only)
+    + Basic Multisig (OP_CHECKMULTISIG)
+    + Time Locks (nLockTime, OP_CHECKLOCKTIMEVERIFY)
     + Claimable Balances (OP_CLAIMABLE_*)
+    + Document Hashes (OP_HASH256)
+    + Atomic Swaps (Hash Time Locked Contracts)
 }
 ```
 
@@ -176,16 +175,27 @@ Consensus = {
 
 | Type | Prefix | Description | Use Case |
 |------|--------|-------------|----------|
-| P2TR-Schnorr | xsl1 | Standard Taproot | General use |
-| P2TR-Dilithium | xslq1 | Quantum-ready | Future-proof custody |
-| P2TR-Vault | xslv1 | Vault covenant | Institutional cold storage |
-| P2TR-Channel | xslc1 | Payment channel | Settlement corridors |
+| P2TR | xsl1 | Taproot | Standard institutional use |
+| P2TR-MS | xslm1 | Taproot Multisig | Custody arrangements |
+| P2TR-TL | xslt1 | Taproot Timelock | Delayed spending |
+| P2TR-CB | xslc1 | Claimable Balance | Escrow and conditions |
+
+### 4.4 Transaction Types
+
+Shell supports essential transaction types for institutions:
+- **Standard Transfer**: Simple UTXO spending
+- **Multisig Transfer**: N-of-M signature requirements
+- **Time-locked Transfer**: Spending delayed until block/time
+- **Claimable Balance**: Conditional payments with predicates
+- **Document Hash**: Simple hash commitment with timestamp
+- **Channel Operations**: Open/update/close bilateral channels
+- **Atomic Swap**: Cross-chain exchanges
 
 ## 5. Consensus Mechanism
 
 ### 5.1 RandomX Proof-of-Work
 
-Shell Reserve employs RandomX, a CPU-optimized mining algorithm that resists ASIC development:
+Shell Reserve employs RandomX, a CPU-optimized mining algorithm:
 
 **Parameters**:
 - Memory requirement: 2 GB
@@ -199,97 +209,124 @@ Shell Reserve employs RandomX, a CPU-optimized mining algorithm that resists ASI
 - **Energy efficiency**: Leverages existing infrastructure
 - **Accessibility**: Institutions can self-mine for acquisition
 
-### 5.2 Difficulty Adjustment
+### 5.2 Block Size Rationale
 
-Modified Bitcoin adjustment with faster response:
-- **Period**: 288 blocks (~24 hours)
-- **Maximum change**: ±25% per period
+**500KB Normal Size**:
+- Propagates globally in <30 seconds
+- Supports ~1,500 transactions per block
+- ~300 TPS theoretical maximum
+- 10-20 TPS expected institutional usage
+
+**1MB Emergency Maximum**:
+- Only during extreme congestion
+- 10x fee requirement
+- Automatic return to 500KB after 6 blocks
+
+### 5.3 Difficulty Adjustment
+
+Standard Bitcoin adjustment:
+- **Period**: 2,016 blocks (~1 week)
+- **Maximum change**: ±4x per period
 - **Target**: 5-minute average block time
-- **Algorithm**: Weighted moving average
-
-### 5.3 Auxiliary Proof-of-Work (Sunset Feature)
-
-For initial security, Bitcoin miners can merge-mine Shell Reserve:
-- **Tag**: "XSLTAG" in Bitcoin coinbase
-- **Verification**: Merkle proof to Bitcoin header
-- **Sunset**: Disabled when native hashrate sufficient
-- **Transition**: 6-month notice period
 
 ## 6. Privacy Model
 
 ### 6.1 Selective Transparency
 
-Shell Reserve implements a privacy model optimized for institutional needs:
+Shell Reserve implements minimal privacy for institutional needs:
 
-**Default (L0)**:
+**Confidential Transactions**:
 - ✅ **Amounts hidden**: Pedersen commitments conceal values
-- ✅ **Auditability**: Bulletproofs prevent inflation
-- ❌ **Transaction graph visible**: Preserves flow analysis
+- ✅ **Range proofs**: Bulletproofs prevent negative values
+- ✅ **Transaction graph visible**: Preserves flow analysis for compliance
+- ✅ **No additional privacy**: No ring signatures, no stealth addresses
 
-**Optional (L0.5)**:
-- ✅ **Sender privacy**: Ring signatures with decoys
-- ✅ **Receiver privacy**: Stealth addresses
-- ✅ **Full privacy**: Complete transaction unlinkability
+### 6.2 View Keys
 
-### 6.2 Viewing Key Hierarchy
+Simple viewing key system for regulatory compliance:
+- **Transaction Key**: Reveals amount for specific transaction
+- **Account Key**: Reveals all amounts for an address
+- **No complex hierarchies**: Keep it simple
 
-Institutions can selectively disclose transaction details:
+### 6.3 Compliance
 
-```
-Master Seed (m)
-├── m/0' - Spending Key (full control)
-├── m/1' - Compliance Key (amounts + parties)
-├── m/2' - Audit Key (amounts only)
-└── m/3' - View Key (existence only)
-```
-
-### 6.3 Compliance Integration
-
-Native support for regulatory requirements:
-- **Proof of Reserves**: Cryptographic attestations
-- **Selective disclosure**: Per-transaction view keys
-- **Time-locked reveals**: Automatic disclosure after delay
-- **Multi-party computation**: Shared compliance validation
+Built-in support for institutional requirements:
+- **Proof of Reserves**: Sum commitments without revealing individual balances
+- **Transaction Monitoring**: Flow analysis remains possible
+- **Selective Disclosure**: Per-transaction view keys
+- **AML/KYC**: Off-chain identity linking
 
 ## 7. Settlement Primitives
 
-### 7.1 Payment Channels (L1)
+### 7.1 Bilateral Payment Channels
 
-Inspired by Lightning Network and XRP, but simplified for institutional use:
+Simple 2-party channels for institutional settlement:
 
-**Channel Lifecycle**:
-1. **Open**: Lock XSL in 2-of-2 multisig with timeout
-2. **Update**: Exchange signed balance updates off-chain
-3. **Close**: Broadcast final state to chain
+**Lifecycle**:
+1. **Open**: Lock funds in 2-of-2 multisig
+2. **Update**: Exchange signed balance updates
+3. **Close**: Broadcast final state
 
-**Key Features**:
-- Unidirectional only (simpler security model)
-- No routing (direct institutional relationships)
-- Atomic multi-channel updates (portfolio rebalancing)
-- On-chain state tracking (regulatory clarity)
+**Characteristics**:
+- No routing (bilateral only)
+- No watchtowers needed
+- Simple balance updates
+- On-chain dispute resolution
 
-### 7.2 Claimable Balances
+### 7.2 Claimable Balances (Stellar-Style)
 
-From Stellar's design, enabling sophisticated payment conditions:
+Conditional payments with simple predicates for escrow:
 
 **Predicate Types**:
-- `UNCONDITIONAL`: Claim anytime
-- `TIME_BOUND`: Valid between timestamps
-- `HASH_PREIMAGE`: Requires secret revelation
-- `AND/OR`: Combine conditions
+- **Unconditional**: Can claim anytime
+- **Time Bounds**: Valid between absolute times
+- **Before/After**: Relative time conditions
+- **Hash Preimage**: Requires secret revelation
 
 **Use Cases**:
-- Escrow with automatic expiry
 - Cross-border payments with compliance holds
-- Batch settlements with time windows
+- Escrow with automatic expiry
+- Trade settlement conditions
+- Deferred compensation arrangements
 
-### 7.3 Cross-Chain Atomic Swaps
+### 7.3 Document Hashes
 
-Native support for trustless exchanges:
-- **HTLC Scripts**: Time-locked hash commitments
-- **Adaptor Signatures**: Privacy-preserving swaps
-- **Multi-Asset**: XSL ↔ BTC/Gold tokens/CBDCs
-- **Batch Execution**: Multiple swaps in one transaction
+Simple on-chain hash commitments for trade documentation:
+
+**Implementation**:
+- Just OP_HASH256 commitments
+- No attestors or trusted third parties
+- Institutions verify documents off-chain
+- Shell records hash + timestamp + reference
+
+**Document Types** (for reference only):
+- Bill of Lading hash
+- Letter of Credit hash
+- Inspection Certificate hash
+- Any document requiring audit trail
+
+### 7.4 ISO 20022 Integration
+
+Basic compatibility with bank messaging standards:
+
+**Message Types Supported**:
+- **pacs.008**: Credit transfer
+- **pacs.009**: Financial institution transfer
+- **camt.056**: Payment cancellation
+- **pain.001**: Payment initiation
+
+**Integration Points**:
+- Transaction metadata mapping
+- Reference field compatibility
+- Amount and party identification
+- Settlement finality indicators
+
+### 7.5 Atomic Swaps
+
+Standard Hash Time Locked Contracts (HTLCs):
+- **Cross-chain**: XSL ↔ BTC/ETH
+- **Time-bounded**: Automatic refund on timeout
+- **No intermediaries**: Direct party-to-party
 
 ## 8. Economic Model
 
@@ -299,8 +336,8 @@ Native support for trustless exchanges:
 Total Supply: 100,000,000 XSL
 
 Distribution:
-- Mining Rewards: 98,000,000 XSL (98%)
-- Liquidity Rewards: 2,000,000 XSL (2%)
+- Mining Rewards: 100,000,000 XSL (100%)
+- No pre-allocation or special privileges
 
 Emission Schedule:
 - Years 0-10: 50% of supply
@@ -311,167 +348,129 @@ Emission Schedule:
 
 ### 8.2 Fee Structure
 
-Designed to discourage non-reserve usage:
-- **Base Fee**: 0.0003 XSL/byte (burned)
-- **Maker Rebate**: -0.0001 XSL/byte
-- **Channel Open**: 0.1 XSL
-- **Atomic Swap**: 0.05 XSL
-
-### 8.3 Liquidity Reward Program
-
-A 3-year program to bootstrap professional market making:
-
-**Structure**:
-- 12 quarterly epochs
-- 2% of supply distributed
-- Based on verified trading volume
-- 3-of-5 attestor validation
-
-**Participants**: Kaiko, Coin Metrics, CME CF Benchmarks, State Street, Anchorage Digital
+High fees to discourage non-institutional usage:
+- **Base Fee**: 0.001 XSL/byte (burned)
+- **Minimum Fee**: 1 XSL per transaction
+- **Channel Open**: 10 XSL
+- **Claimable Balance**: 5 XSL
+- **Document Hash**: 2 XSL
+- **No complex fee markets**: Simple and predictable
 
 ## 9. Institutional Features
 
-### 9.1 Vault Covenants
+### 9.1 Basic Multisig Custody
 
-Time-delayed spending policies enforced by consensus:
+Standard multisignature configurations:
+- **Hot Wallet**: 2-of-3 immediate access
+- **Warm Wallet**: 3-of-5 with time delay
+- **Cold Storage**: 5-of-7 or 11-of-15
+- **Simple Scripts**: No complex conditions
 
-```
-Vault Policy Example:
-- Hot Keys: 11-of-15 immediate spend
-- Warm Keys: 5-of-7 after 7 days
-- Cold Keys: 3-of-5 after 30 days
-- Recovery: 1-of-1 after 365 days
-```
+### 9.2 Time Locks
 
-### 9.2 MuSig2 Aggregation
+Basic delayed spending:
+- **Absolute**: Not spendable until block N
+- **Relative**: Not spendable for N blocks
+- **Simple Recovery**: Single key after 1 year
 
-Efficient multisignature for large signing groups:
-- Single signature on-chain (privacy)
-- Parallel signing sessions (speed)
-- Partial signature aggregation (flexibility)
-- Deterministic nonces (security)
+### 9.3 Trade Documentation
 
-### 9.3 Compliance Tools
+Essential features for audit trails:
+- **Hash Commitments**: Immutable record
+- **Timestamps**: Block-based timing
+- **References**: Link to off-chain documents
+- **No Trust Required**: Verification happens off-chain
 
-Native integration with financial infrastructure:
-- **ISO 20022**: Transaction message compatibility
-- **Basel III**: Automated reporting templates
-- **FIX Protocol**: Order routing support
-- **SWIFT**: Message bridging capability
+### 9.4 SWIFT Compatibility
+
+Basic integration points:
+- **ISO 20022**: Message field mapping
+- **Reference Numbers**: Transaction linkage
+- **Settlement Finality**: Cryptographic proof
+- **REST API**: Simple HTTP interface
 
 ## 10. Implementation Roadmap
 
-### 10.1 Development Phases
+### 10.1 Simplified Development Phases
 
-**Phase α (Months 0-3)**: Core Chain
+**Phase α (Months 0-3)**: Core Chain ✅
 - RandomX integration
-- Taproot implementation
+- Basic UTXO implementation
 - Confidential transactions
-- Basic P2P network
+- P2P network
 
-**Phase β (Months 3-6)**: Liquidity Stack
-- Liquidity reward program
-- Attestor integration
-- Fee mechanism
-- Alliance partnerships
+**Phase β (Months 3-6)**: Basic Features ✅
+- Standard multisig
+- Time locks
+- Document hashes
+- Fee structure
 
-**Phase β.5 (Months 5-6)**: Settlement Layer
-- Payment channel opcodes
-- Claimable balance scripts
-- Atomic swap templates
-
-**Phase γ (Months 6-9)**: Security Hardening
-- Vault covenants
-- MuSig2 integration
-- Fast-sync (compact filters)
-- Security audits
+**Phase γ (Months 6-9)**: Settlement
+- Bilateral channels
+- Claimable balances
+- ISO 20022 mapping
+- Atomic swaps
 
 **Phase δ (Months 9-12)**: Launch Preparation
-- Multi-implementation testing
-- Documentation completion
-- Infrastructure deployment
-- Genesis block mining
+- Security audits
+- Network testing
+- Documentation
+- Genesis block
 
 ### 10.2 Launch Strategy
 
-**Fair Launch Principles**:
+**Fair Launch**: January 1, 2026, 00:00 UTC
 - Zero premine
 - No founder rewards
 - No private sales
-- Pure proof-of-work distribution
-
-**Launch Date**: January 1, 2026, 00:00 UTC
+- Pure proof-of-work
+- No special allocations
 
 ## 11. Use Cases
 
 ### 11.1 Central Bank Reserves
 
-**Traditional Reserve Problems**:
-- Gold: Verification, transportation, divisibility
-- USD: Political risk, inflation, sanctions
-- Other fiat: Limited liquidity, exchange risk
-
-**Shell Reserve Solution**:
-- Cryptographic verification
-- Instant global settlement
-- Precise divisibility
-- Political neutrality
+Simple digital gold for central banks:
+- Mine or purchase XSL
+- Store in multisig cold storage
+- Transfer bilaterally when needed
+- Prove reserves without revealing amounts
 
 ### 11.2 Cross-Border Settlement
 
-**Current System**:
-- Multiple intermediaries
-- 2-3 day settlement
-- High fees
-- Counterparty risk
+Direct bilateral settlement with compliance:
+- Open channel with counterparty
+- Update balances as needed
+- Use claimable balances for escrow
+- Settle on-chain monthly/quarterly
 
-**With Shell Reserve**:
-- Direct bilateral channels
-- Sub-second updates
-- Minimal fees
-- Atomic finality
+### 11.3 Trade Finance
 
-### 11.3 Strategic Reserves
+Document audit trails without trust:
+- Hash trade documents on-chain
+- Verify documents off-chain
+- Immutable timestamp record
+- Link payments to trade flows
 
-**Use Case**: Nations building sovereign wealth
-- Mine directly for acquisition
-- Hold for decades without maintenance
-- Audit publicly without revealing amounts
-- Transfer instantly in crisis
+### 11.4 Strategic Reserves
+
+Long-term sovereign wealth storage:
+- Accumulate through mining
+- Store with time-locked recovery
+- Transfer only in emergencies
+- 100-year planning horizon
 
 ## 12. Conclusion
 
-Shell Reserve represents a fundamental rethinking of cryptocurrency design. By optimizing exclusively for institutional reserve holdings and embracing "boring" as a feature, Shell Reserve creates something new: a digital asset that central banks can trust not because it's innovative, but because it's not.
+Shell Reserve v2.5 achieves the perfect balance between simplicity and institutional utility. By including only truly essential features—proven PoW consensus, basic multisig, claimable balances, and simple hash commitments—Shell creates genuine "digital gold" that institutions can trust.
 
-The layered architecture provides exactly what institutions need:
-- **L0**: Immutable, censorship-resistant value storage
-- **L0.5**: Optional privacy when sovereignty demands it
-- **L0.7**: Institutional-grade custody and controls
-- **L1**: Fast settlement without sacrificing security
+Notably, Shell Reserve maintains its commitment to pure proof-of-work with no special privileges or pre-allocations. There are no liquidity rewards, no trusted attestor networks, and no governance mechanisms. Every XSL must be mined, ensuring true neutrality and fairness.
 
-In an era of monetary uncertainty, geopolitical realignment, and the return of mercantilism, Shell Reserve offers a simple value proposition: digital gold that acts like gold—rare, boring, and reliably valuable for generations.
+The inclusion of claimable balances and ISO 20022 compatibility directly serves central bank needs without adding unnecessary complexity. Document hashes provide audit trails without introducing trusted third parties. This is the minimum viable feature set for institutional reserves in the 21st century.
 
-While others chase retail adoption and DeFi yields, Shell Reserve focuses on a single goal: becoming the reserve asset of choice for the 21st century and beyond. Not through marketing or manipulation, but through technical excellence, absolute fairness, and unwavering commitment to neutrality.
+In an era of monetary experimentation, Shell Reserve offers stability through simplicity. Not because we cannot build complex systems, but because we choose not to—ensuring Shell will operate identically in 100 years.
 
-Shell Reserve launches on January 1, 2026, with no premine, no special allocations, and no privileged parties. Like Bitcoin before it, Shell Reserve will prove its worth through the test of time, secured by mathematics rather than promises, and governed by consensus rather than committees.
-
-**Shell Reserve: Built to last, not to impress.**
-
----
-
-## Appendices
-
-### A. Technical Specifications
-[Detailed protocol specifications available at shell-reserve.org/specs]
-
-### B. Economic Modeling
-[Supply curves and game theory analysis available at shell-reserve.org/economics]
-
-### C. Reference Implementation
-[Open source code at github.com/shell-reserve]
-
-### D. Constitutional Principles
-[Immutable protocol rules at shell-reserve.org/constitution]
+**Shell Reserve: Essential features, eternal reliability.**
 
 ---
 
