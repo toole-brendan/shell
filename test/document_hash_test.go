@@ -102,7 +102,7 @@ func TestDocumentHashValidation(t *testing.T) {
 				[]byte("REF"),                  // valid reference
 			},
 			expectError: true,
-			errorMsg:    "timestamp must be positive",
+			errorMsg:    "document timestamp must be positive",
 		},
 		{
 			name: "Reference too long",

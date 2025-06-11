@@ -643,7 +643,98 @@ func newHashFromStr(hexStr string) *chainhash.Hash {
 
 // TestNet3Params defines the network parameters for the test Bitcoin network
 // (version 3).  Not applicable for Shell Reserve but included for compatibility.
-var TestNet3Params = MainNetParams
+var TestNet3Params = Params{
+	Name:        "testnet3",
+	Net:         wire.TestNet3,
+	DefaultPort: "18333",
+	DNSSeeds:    []DNSSeed{}, // No seeds for deprecated testnet3
+
+	// Use testnet4 configuration but with testnet3 identifiers
+	GenesisBlock:                  &testNet4GenesisBlock,
+	GenesisHash:                   &testNet4GenesisHash,
+	PowLimit:                      testNet4PowLimit,
+	PowLimitBits:                  0x1d00ffff,
+	PoWNoRetargeting:              false,
+	EnforceBIP94:                  false,
+	BIP0034Height:                 0,
+	BIP0065Height:                 0,
+	BIP0066Height:                 0,
+	CoinbaseMaturity:              100,
+	MaxSupply:                     100000000 * 1e8,
+	SubsidyReductionInterval:      131400,
+	TargetTimespan:                time.Hour * 24,
+	TargetTimePerBlock:            time.Minute * 5,
+	RetargetAdjustmentFactor:      4,
+	ReduceMinDifficulty:           true,
+	MinDiffReductionTime:          time.Minute * 10,
+	GenerateSupported:             true,
+	RandomXSeedRotation:           1024,
+	RandomXMemory:                 1 * 1024 * 1024 * 1024,
+	L1ActivationHeight:            0,
+	L05ActivationHeight:           131400,
+	Checkpoints:                   []Checkpoint{},
+	RuleChangeActivationThreshold: 216,
+	MinerConfirmationWindow:       288,
+	Deployments: [DefinedDeployments]ConsensusDeployment{
+		DeploymentTestDummy: {
+			BitNumber:         28,
+			DeploymentStarter: NewMedianTimeDeploymentStarter(time.Time{}),
+			DeploymentEnder:   NewMedianTimeDeploymentEnder(time.Time{}),
+		},
+		DeploymentCSV: {
+			BitNumber:          0,
+			AlwaysActiveHeight: 0,
+			DeploymentStarter:  NewMedianTimeDeploymentStarter(time.Time{}),
+			DeploymentEnder:    NewMedianTimeDeploymentEnder(time.Time{}),
+		},
+		DeploymentSegwit: {
+			BitNumber:          1,
+			AlwaysActiveHeight: 0,
+			DeploymentStarter:  NewMedianTimeDeploymentStarter(time.Time{}),
+			DeploymentEnder:    NewMedianTimeDeploymentEnder(time.Time{}),
+		},
+		DeploymentTaproot: {
+			BitNumber:          2,
+			AlwaysActiveHeight: 0,
+			DeploymentStarter:  NewMedianTimeDeploymentStarter(time.Time{}),
+			DeploymentEnder:    NewMedianTimeDeploymentEnder(time.Time{}),
+		},
+		DeploymentConfidentialTx: {
+			BitNumber:          3,
+			AlwaysActiveHeight: 0,
+			DeploymentStarter:  NewMedianTimeDeploymentStarter(time.Time{}),
+			DeploymentEnder:    NewMedianTimeDeploymentEnder(time.Time{}),
+		},
+		DeploymentPaymentChannels: {
+			BitNumber:          4,
+			AlwaysActiveHeight: 0,
+			DeploymentStarter:  NewMedianTimeDeploymentStarter(time.Time{}),
+			DeploymentEnder:    NewMedianTimeDeploymentEnder(time.Time{}),
+		},
+		DeploymentPrivacyLayer: {
+			BitNumber:           5,
+			MinActivationHeight: 131400,
+			DeploymentStarter:   NewMedianTimeDeploymentStarter(time.Date(2027, 1, 1, 0, 0, 0, 0, time.UTC)),
+			DeploymentEnder:     NewMedianTimeDeploymentEnder(time.Date(2029, 1, 1, 0, 0, 0, 0, time.UTC)),
+		},
+		DeploymentVaultCovenants: {
+			BitNumber:          6,
+			AlwaysActiveHeight: 0,
+			DeploymentStarter:  NewMedianTimeDeploymentStarter(time.Time{}),
+			DeploymentEnder:    NewMedianTimeDeploymentEnder(time.Time{}),
+		},
+	},
+	RelayNonStdTxs:          true,
+	Bech32HRPSegwit:         "txsl",
+	PubKeyHashAddrID:        0x6f,
+	ScriptHashAddrID:        0xc4,
+	PrivateKeyID:            0xef,
+	WitnessPubKeyHashAddrID: 0x03,
+	WitnessScriptHashAddrID: 0x28,
+	HDPrivateKeyID:          [4]byte{0x04, 0x35, 0x83, 0x94},
+	HDPublicKeyID:           [4]byte{0x04, 0x35, 0x87, 0xcf},
+	HDCoinType:              1,
+}
 
 // TestNet4Params defines the network parameters for the test Bitcoin network
 // (version 4).  Not applicable for Shell Reserve but included for compatibility.
@@ -1098,7 +1189,98 @@ func CustomSignetParams(challenge []byte, dnsSeeds []DNSSeed) Params {
 
 // RegressionNetParams defines the network parameters for the regression test
 // Bitcoin network.  Not applicable for Shell Reserve but included for compatibility.
-var RegressionNetParams = MainNetParams
+var RegressionNetParams = Params{
+	Name:        "regtest",
+	Net:         wire.TestNet,
+	DefaultPort: "18444",
+	DNSSeeds:    []DNSSeed{}, // No seeds for regtest
+
+	// Chain parameters (regtest configuration)
+	GenesisBlock:                  &simNetGenesisBlock, // Use simnet genesis for regtest
+	GenesisHash:                   &simNetGenesisHash,
+	PowLimit:                      simNetPowLimit,
+	PowLimitBits:                  0x207fffff,
+	PoWNoRetargeting:              true, // No retargeting for regtest
+	EnforceBIP94:                  false,
+	BIP0034Height:                 0,
+	BIP0065Height:                 0,
+	BIP0066Height:                 0,
+	CoinbaseMaturity:              100,
+	MaxSupply:                     100000000 * 1e8,
+	SubsidyReductionInterval:      150, // Very fast for testing
+	TargetTimespan:                time.Minute * 1,
+	TargetTimePerBlock:            time.Second * 30, // 30 second blocks for regtest
+	RetargetAdjustmentFactor:      4,
+	ReduceMinDifficulty:           true,
+	MinDiffReductionTime:          time.Second * 30,
+	GenerateSupported:             true,
+	RandomXSeedRotation:           50,                // Very frequent for testing
+	RandomXMemory:                 128 * 1024 * 1024, // 128MB for regtest
+	L1ActivationHeight:            0,
+	L05ActivationHeight:           100, // Very early activation
+	Checkpoints:                   []Checkpoint{},
+	RuleChangeActivationThreshold: 108, // 75% of 144
+	MinerConfirmationWindow:       144, // Bitcoin regtest standard
+	Deployments: [DefinedDeployments]ConsensusDeployment{
+		DeploymentTestDummy: {
+			BitNumber:         28,
+			DeploymentStarter: NewMedianTimeDeploymentStarter(time.Time{}),
+			DeploymentEnder:   NewMedianTimeDeploymentEnder(time.Time{}),
+		},
+		DeploymentCSV: {
+			BitNumber:          0,
+			AlwaysActiveHeight: 0,
+			DeploymentStarter:  NewMedianTimeDeploymentStarter(time.Time{}),
+			DeploymentEnder:    NewMedianTimeDeploymentEnder(time.Time{}),
+		},
+		DeploymentSegwit: {
+			BitNumber:          1,
+			AlwaysActiveHeight: 0,
+			DeploymentStarter:  NewMedianTimeDeploymentStarter(time.Time{}),
+			DeploymentEnder:    NewMedianTimeDeploymentEnder(time.Time{}),
+		},
+		DeploymentTaproot: {
+			BitNumber:          2,
+			AlwaysActiveHeight: 0,
+			DeploymentStarter:  NewMedianTimeDeploymentStarter(time.Time{}),
+			DeploymentEnder:    NewMedianTimeDeploymentEnder(time.Time{}),
+		},
+		DeploymentConfidentialTx: {
+			BitNumber:          3,
+			AlwaysActiveHeight: 0,
+			DeploymentStarter:  NewMedianTimeDeploymentStarter(time.Time{}),
+			DeploymentEnder:    NewMedianTimeDeploymentEnder(time.Time{}),
+		},
+		DeploymentPaymentChannels: {
+			BitNumber:          4,
+			AlwaysActiveHeight: 0,
+			DeploymentStarter:  NewMedianTimeDeploymentStarter(time.Time{}),
+			DeploymentEnder:    NewMedianTimeDeploymentEnder(time.Time{}),
+		},
+		DeploymentPrivacyLayer: {
+			BitNumber:           5,
+			MinActivationHeight: 100,
+			DeploymentStarter:   NewMedianTimeDeploymentStarter(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)),
+			DeploymentEnder:     NewMedianTimeDeploymentEnder(time.Date(2028, 1, 1, 0, 0, 0, 0, time.UTC)),
+		},
+		DeploymentVaultCovenants: {
+			BitNumber:          6,
+			AlwaysActiveHeight: 0,
+			DeploymentStarter:  NewMedianTimeDeploymentStarter(time.Time{}),
+			DeploymentEnder:    NewMedianTimeDeploymentEnder(time.Time{}),
+		},
+	},
+	RelayNonStdTxs:          true,
+	Bech32HRPSegwit:         "rxsl", // Regtest Shell prefix
+	PubKeyHashAddrID:        0x6f,   // Same as testnet
+	ScriptHashAddrID:        0xc4,
+	PrivateKeyID:            0xef,
+	WitnessPubKeyHashAddrID: 0x52,
+	WitnessScriptHashAddrID: 0x57,
+	HDPrivateKeyID:          [4]byte{0x04, 0x35, 0x83, 0x94},
+	HDPublicKeyID:           [4]byte{0x04, 0x35, 0x87, 0xcf},
+	HDCoinType:              1,
+}
 
 func init() {
 	// Register all default networks when the package is initialized.
