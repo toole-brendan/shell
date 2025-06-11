@@ -29,6 +29,11 @@ type ShellScriptParams struct {
 	ClaimableID        claimable.ClaimableID
 	ClaimableClaimer   *btcec.PublicKey
 	ClaimableProof     claimable.ClaimProof
+
+	// Document hash parameters
+	DocumentHash      [32]byte
+	DocumentTimestamp int64
+	DocumentReference string
 }
 
 // ExtractChannelOpenParams extracts parameters from OP_CHANNEL_OPEN script
@@ -247,6 +252,48 @@ func ExtractClaimableClaimParams(script []byte, witness wire.TxWitness) (*ShellS
 	}, nil
 }
 
+// ExtractDocumentHashParams extracts parameters from OP_DOC_HASH script
+func ExtractDocumentHashParams(script []byte, witness wire.TxWitness) (*ShellScriptParams, error) {
+	// For OP_DOC_HASH, parameters are in witness:
+	// [hash(32 bytes)] [timestamp(8 bytes)] [reference(variable)]
+
+	if len(witness) < 3 {
+		return nil, errors.New("insufficient witness items for document hash")
+	}
+
+	// Parse document hash
+	hashBytes := witness[0]
+	if len(hashBytes) != 32 {
+		return nil, fmt.Errorf("invalid hash length: expected 32, got %d", len(hashBytes))
+	}
+	var docHash [32]byte
+	copy(docHash[:], hashBytes)
+
+	// Parse timestamp
+	timestampBytes := witness[1]
+	if len(timestampBytes) != 8 {
+		return nil, fmt.Errorf("invalid timestamp length: expected 8, got %d", len(timestampBytes))
+	}
+	timestamp := int64(binary.LittleEndian.Uint64(timestampBytes))
+
+	if timestamp <= 0 {
+		return nil, errors.New("document timestamp must be positive")
+	}
+
+	// Parse reference string
+	referenceBytes := witness[2]
+	if len(referenceBytes) > 256 {
+		return nil, fmt.Errorf("reference too long: %d bytes, max 256", len(referenceBytes))
+	}
+	reference := string(referenceBytes)
+
+	return &ShellScriptParams{
+		DocumentHash:      docHash,
+		DocumentTimestamp: timestamp,
+		DocumentReference: reference,
+	}, nil
+}
+
 // DetectShellOpcode scans a script for Shell-specific opcodes
 func DetectShellOpcode(script []byte) (byte, bool) {
 	shellOpcodes := []byte{
@@ -255,6 +302,7 @@ func DetectShellOpcode(script []byte) (byte, bool) {
 		OP_CHANNEL_CLOSE,
 		OP_CLAIMABLE_CREATE,
 		OP_CLAIMABLE_CLAIM,
+		OP_DOC_HASH,
 	}
 
 	for _, opcode := range shellOpcodes {

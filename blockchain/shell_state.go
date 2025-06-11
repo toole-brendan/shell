@@ -127,6 +127,9 @@ func (scs *ShellChainState) ProcessShellOpcode(opcode byte, tx *btcutil.Tx, txId
 	case 0xcb: // OP_LIQUIDITY_CLAIM
 		return scs.processLiquidityRewardClaim(tx, txIdx, blockHeight)
 
+	case 0xcc: // OP_DOC_HASH
+		return scs.processDocumentHash(tx, txIdx, blockHeight)
+
 	default:
 		return fmt.Errorf("unknown Shell opcode: 0x%02x", opcode)
 	}
@@ -448,6 +451,94 @@ func (scs *ShellChainState) processLiquidityRewardClaim(tx *btcutil.Tx, txIdx in
 	}
 
 	return nil
+}
+
+// processDocumentHash handles OP_DOC_HASH execution
+func (scs *ShellChainState) processDocumentHash(tx *btcutil.Tx, txIdx int, blockHeight int32) error {
+	msgTx := tx.MsgTx()
+	if txIdx >= len(msgTx.TxOut) {
+		return fmt.Errorf("invalid output index for document hash")
+	}
+
+	// For document hash, witness data contains the parameters
+	var witness btcdwire.TxWitness
+	if len(msgTx.TxIn) > 0 && len(msgTx.TxIn[0].Witness) > 0 {
+		witness = msgTx.TxIn[0].Witness
+	}
+
+	// Extract document hash parameters from witness
+	// Expected format: [hash(32 bytes), timestamp(8 bytes), reference(variable)]
+	if len(witness) < 3 {
+		return fmt.Errorf("document hash requires hash, timestamp, and reference in witness")
+	}
+
+	hashBytes := witness[0]
+	timestampBytes := witness[1]
+	referenceBytes := witness[2]
+
+	// Validate hash is 32 bytes (SHA256)
+	if len(hashBytes) != 32 {
+		return fmt.Errorf("document hash must be 32 bytes, got %d", len(hashBytes))
+	}
+
+	// Validate timestamp
+	if len(timestampBytes) > 8 {
+		return fmt.Errorf("timestamp too large")
+	}
+
+	// Validate reference length
+	if len(referenceBytes) > 256 {
+		return fmt.Errorf("document reference too long: %d bytes, max 256", len(referenceBytes))
+	}
+
+	// Convert timestamp bytes to int64
+	var timestamp int64
+	for i, b := range timestampBytes {
+		timestamp |= int64(b) << (8 * i)
+	}
+
+	if timestamp <= 0 {
+		return fmt.Errorf("document timestamp must be positive")
+	}
+
+	// Create document hash record
+	var docHash [32]byte
+	copy(docHash[:], hashBytes)
+
+	txHash := tx.Hash()
+	documentRecord := DocumentHashRecord{
+		Hash:        docHash,
+		Timestamp:   timestamp,
+		Reference:   string(referenceBytes),
+		BlockHeight: blockHeight,
+		TxID:        btcdHashToShellHash(txHash),
+		OutputIndex: uint32(txIdx),
+	}
+
+	// In a full implementation, this would:
+	// 1. Store the document hash record in a specialized index
+	// 2. Allow querying by hash, timestamp, or reference
+	// 3. Create an immutable audit trail
+	// 4. Emit events for document tracking systems
+
+	// For now, we validate the parameters and note the commitment
+	// The actual storage would be handled by a document index subsystem
+
+	// Log the document hash commitment (in production, this would be indexed)
+	log.Infof("Document hash committed: hash=%x timestamp=%d reference='%s' tx=%s",
+		docHash, timestamp, documentRecord.Reference, txHash.String())
+
+	return nil
+}
+
+// DocumentHashRecord represents a document hash commitment on the blockchain
+type DocumentHashRecord struct {
+	Hash        [32]byte       // SHA256 hash of the document
+	Timestamp   int64          // Timestamp when document was hashed
+	Reference   string         // External reference (e.g., trade ID, contract number)
+	BlockHeight int32          // Block height when committed
+	TxID        chainhash.Hash // Transaction ID containing the commitment
+	OutputIndex uint32         // Output index in the transaction
 }
 
 // Commit applies all modifications to the underlying database

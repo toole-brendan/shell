@@ -161,6 +161,7 @@ func verifyShellOpcodeRules(vm *Engine) error {
 		bytes.Contains(script, []byte{OP_CHANNEL_CLOSE})
 	hasClaimableOp := bytes.Contains(script, []byte{OP_CLAIMABLE_CREATE}) ||
 		bytes.Contains(script, []byte{OP_CLAIMABLE_CLAIM})
+	hasDocHashOp := bytes.Contains(script, []byte{OP_DOC_HASH})
 
 	// Ensure opcodes aren't mixed inappropriately
 	opCount := 0
@@ -170,9 +171,12 @@ func verifyShellOpcodeRules(vm *Engine) error {
 	if hasClaimableOp {
 		opCount++
 	}
+	if hasDocHashOp {
+		opCount++
+	}
 
 	if opCount > 1 {
-		return errors.New("cannot mix channel and claimable opcodes")
+		return errors.New("cannot mix different Shell opcodes in one transaction")
 	}
 
 	// Additional validation based on transaction type
@@ -182,6 +186,10 @@ func verifyShellOpcodeRules(vm *Engine) error {
 
 	if hasClaimableOp {
 		return verifyClaimableTransaction(vm)
+	}
+
+	if hasDocHashOp {
+		return verifyDocumentHashTransaction(vm)
 	}
 
 	return nil
@@ -207,6 +215,49 @@ func verifyClaimableTransaction(vm *Engine) error {
 	// 3. Have valid proofs
 
 	// TODO: Full claimable validation
+
+	return nil
+}
+
+// verifyDocumentHashTransaction performs document hash validation
+func verifyDocumentHashTransaction(vm *Engine) error {
+	// Document hash transactions must:
+	// 1. Have properly formatted witness data
+	// 2. Include valid document hash (32 bytes)
+	// 3. Have reasonable timestamp
+	// 4. Have valid reference string
+
+	if vm.txIdx >= len(vm.tx.TxIn) {
+		return errors.New("invalid transaction index for document hash")
+	}
+
+	witness := vm.tx.TxIn[vm.txIdx].Witness
+	if len(witness) < 3 {
+		return errors.New("document hash requires hash, timestamp, and reference in witness")
+	}
+
+	// Validate hash format
+	hashBytes := witness[0]
+	if len(hashBytes) != 32 {
+		return fmt.Errorf("document hash must be 32 bytes, got %d", len(hashBytes))
+	}
+
+	// Validate timestamp format
+	timestampBytes := witness[1]
+	if len(timestampBytes) > 8 {
+		return fmt.Errorf("timestamp too large")
+	}
+
+	// Validate reference length
+	referenceBytes := witness[2]
+	if len(referenceBytes) > 256 {
+		return fmt.Errorf("document reference too long: %d bytes, max 256", len(referenceBytes))
+	}
+
+	// TODO: Additional validation:
+	// - Verify timestamp is reasonable (not too far in future/past)
+	// - Check for duplicate hash commitments within same block
+	// - Validate reference format if required
 
 	return nil
 }

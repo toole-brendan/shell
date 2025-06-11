@@ -20,6 +20,7 @@ const (
 	ChannelUpdateFee = 0.01 * 1e8 // 0.01 XSL for channel updates
 	AtomicSwapFee    = 0.05 * 1e8 // 0.05 XSL for atomic swaps
 	ClaimableFee     = 0.02 * 1e8 // 0.02 XSL for claimable balances
+	DocumentHashFee  = 0.02 * 1e8 // 0.02 XSL for document hash commitments
 )
 
 // FeeCalculator handles Shell Reserve fee calculations
@@ -160,6 +161,9 @@ func (fc *FeeCalculator) getOpcodeDefinedFee(script []byte) (int64, error) {
 
 		case 0xca: // OP_CLAIMABLE_CLAIM
 			return 0, nil // No additional fee for claiming
+
+		case 0xcc: // OP_DOC_HASH
+			return int64(DocumentHashFee), nil
 		}
 	}
 
