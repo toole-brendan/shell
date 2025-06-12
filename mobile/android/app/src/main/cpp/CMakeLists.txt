@@ -46,13 +46,13 @@ set(SHELL_MINING_SOURCES
     android_thermal_manager.cpp
 )
 
-# Shared C++ sources (to be implemented)
-set(SHARED_SOURCES
-    ../../../shared/mining-core/mobilex_core.cpp
-    ../../../shared/mining-core/randomx_wrapper.cpp
-    ../../../shared/crypto/hash_functions.cpp
-    ../../../shared/protocols/stratum_client.cpp
-)
+# Shared C++ sources (to be implemented in future phases)
+# set(SHARED_SOURCES
+#     ../../../shared/mining-core/mobilex_core.cpp
+#     ../../../shared/mining-core/randomx_wrapper.cpp
+#     ../../../shared/crypto/hash_functions.cpp
+#     ../../../shared/protocols/stratum_client.cpp
+# )
 
 # RandomX sources (subset needed for mobile)
 set(RANDOMX_SOURCES
@@ -93,7 +93,7 @@ endif()
 # Create the shared library
 add_library(shellmining SHARED
     ${SHELL_MINING_SOURCES}
-    ${SHARED_SOURCES}
+    # ${SHARED_SOURCES}  # Will be added in future phases
     ${RANDOMX_SOURCES}
 )
 
@@ -110,6 +110,8 @@ target_link_libraries(shellmining
     ${log-lib}
     ${android-lib}
     ${neuralnetworks-lib}
+    crypto   # OpenSSL crypto library for SHA256
+    ssl      # OpenSSL SSL library
 )
 
 # Enable NEON optimizations if available
