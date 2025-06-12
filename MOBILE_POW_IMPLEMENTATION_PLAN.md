@@ -12,10 +12,27 @@ This document outlines the implementation plan for integrating mobile-optimized 
 - **Base Algorithm**: Extended RandomX with mobile-specific optimizations
 - **Target Hardware**: ARM64 mobile SoCs (Snapdragon, Apple Silicon, MediaTek)
 - **Economic Model**: ASIC resistance through hardware equivalence rather than impossibility
-- **Timeline**: 18-month development cycle with planned mainnet activation
+- **Timeline**: 12-month development cycle with planned mainnet activation
 - **Integration**: Seamless upgrade to existing Shell Reserve infrastructure
 
-### Current Status: Phase Alpha - Milestone A4 COMPLETE (Month 4 of 4)
+### Implementation Scope Clarification
+
+**What's Implemented (Go Codebase):**
+- ✅ Core blockchain modifications for mobile PoW support
+- ✅ BlockHeader extension with ThermalProof field
+- ✅ Thermal verification in block validation
+- ✅ Mobile mining package structure and algorithms
+- ✅ NPU abstraction layer and platform adapters
+- ✅ Testing and benchmarking frameworks
+
+**What's NOT Implemented Yet:**
+- ⏳ Mining pool server infrastructure (Phase Beta)
+- ⏳ Full node RPC/REST APIs for mobile mining (Phase Beta)
+- ⏳ Native mobile applications (separate project)
+- ⏳ Network protocol extensions for mobile miners
+- ⏳ Production deployment and mainnet activation
+
+### Current Status: Phase Alpha - Milestone A4 MOSTLY COMPLETE (Month 4 of 4)
 
 **Progress Summary:**
 - ✅ **Core Infrastructure**: Mobile mining package structure created
@@ -29,8 +46,10 @@ This document outlines the implementation plan for integrating mobile-optimized 
 - ✅ **Heterogeneous Scheduling**: Core scheduler implemented with big.LITTLE support
 - ✅ **Testing Framework**: Comprehensive test suite for all mobile features
 - ✅ **Performance Benchmarking**: Full benchmarking framework for optimization
+- ⏳ **Mining Pool Infrastructure**: Pool servers for mobile miners not yet implemented
+- ⏳ **Full Node Services**: RPC/REST APIs for mobile mining support pending
 
-**Phase Alpha Complete**: All Go codebase components for mobile mining are now implemented. Native mobile applications will be developed as a separate project in Phase Beta.
+**Phase Alpha Status**: Core blockchain components for mobile mining are implemented. Mining pool infrastructure and full node services are pending Phase Beta development. Native mobile applications will be developed as a separate project.
 
 ## Table of Contents
 
@@ -353,12 +372,39 @@ cp -r mining/randomx/* mining/mobilex/
 #### Milestone A4: Mobile Mining Demo & Testing (Month 4) ✅ **COMPLETE** (Go codebase portions)
 
 **Mobile Application Foundation:** ⏳ **NOT STARTED** (Native mobile apps - separate from Go codebase)
-```go
-// mobile/shell-miner/ - Cross-platform mobile app
-// ⏳ android/ - Android native components
-// ⏳ ios/ - iOS native components  
-// ⏳ shared/ - React Native/Flutter shared UI
-// ⏳ native/ - CGO bridge to mining/mobilex
+```
+mobile/                          # Native mobile applications
+├── android/                     # Android app (Kotlin + C++)
+│   ├── app/                     # Kotlin Android application
+│   │   ├── src/main/kotlin/com/shell/miner/
+│   │   │   ├── MainActivity.kt
+│   │   │   ├── MiningService.kt
+│   │   │   ├── PowerManager.kt
+│   │   │   ├── ThermalManager.kt
+│   │   │   ├── PoolClient.kt
+│   │   │   └── WalletManager.kt
+│   │   └── src/main/cpp/        # C++ mining engine
+│   │       ├── shell_mining_jni.cpp
+│   │       ├── mobile_randomx.cpp
+│   │       └── arm64_optimizations.cpp
+│   └── shared-cpp/              # Shared C++ code with iOS
+├── ios/                         # iOS app (Swift + C++)
+│   ├── ShellMiner/              # Swift iOS application
+│   │   ├── ContentView.swift
+│   │   ├── MiningCoordinator.swift
+│   │   ├── PowerManager.swift
+│   │   ├── ThermalManager.swift
+│   │   ├── PoolClient.swift
+│   │   └── WalletManager.swift
+│   ├── MiningEngine/            # C++ mining framework
+│   │   ├── shell_mining_bridge.mm
+│   │   ├── mobile_randomx.cpp
+│   │   └── arm64_optimizations.cpp
+│   └── ShellMiner.xcodeproj
+└── shared/                      # Shared components
+    ├── mining-core/             # Common C++ mining code
+    ├── protocols/               # Network protocol definitions
+    └── crypto/                  # Cryptographic primitives
 ```
 
 **Testing Framework:** ✅ **COMPLETE**
@@ -395,38 +441,405 @@ cp -r mining/randomx/* mining/mobilex/
 
 #### Milestone B1: Mobile Applications & User Experience (Month 5-6) ⏳ **NOT STARTED**
 
-**Complete Native Mobile Mining Applications:**
+**Native Mobile Mining Applications - Detailed Implementation Plan:**
 
-Based on the implementation strategy:
-- **Custom Components**: Mining engine, UI/UX, platform integration
-- **Adapted Libraries**: RandomX core, SPV wallet libraries, Stratum protocol, crypto primitives
+### Android Application (Kotlin + C++)
 
-```cpp
-// mobile/ - Native mobile apps with C++ mining cores
-// ⏳ All components pending
-```
-
-**Key Features Implementation:**
+**Core Architecture:**
 ```kotlin
-// ⏳ Android power management
-// ⏳ iOS background processing
-// ⏳ Cross-platform mining core
+// mobile/android/app/src/main/kotlin/com/shell/miner/
+// Main application structure with clean architecture
+
+package com.shell.miner
+
+// Domain layer - business logic
+data class MiningState(
+    val hashRate: Double,
+    val sharesSubmitted: Long,
+    val blocksFound: Int,
+    val temperature: Float,
+    val batteryLevel: Int,
+    val estimatedEarnings: Double
+)
+
+// Repository pattern for data management
+interface MiningRepository {
+    suspend fun startMining(intensity: MiningIntensity): Result<Unit>
+    suspend fun stopMining(): Result<Unit>
+    fun getMiningState(): Flow<MiningState>
+    suspend fun submitShare(share: MiningShare): Result<Boolean>
+}
+
+// ViewModel for UI state management
+class MiningViewModel(
+    private val miningRepo: MiningRepository,
+    private val powerManager: PowerManager,
+    private val thermalManager: ThermalManager
+) : ViewModel() {
+    
+    private val _uiState = MutableStateFlow(MiningUiState())
+    val uiState: StateFlow<MiningUiState> = _uiState.asStateFlow()
+    
+    fun toggleMining() {
+        viewModelScope.launch {
+            if (_uiState.value.isMining) {
+                miningRepo.stopMining()
+            } else {
+                val intensity = powerManager.determineOptimalIntensity()
+                miningRepo.startMining(intensity)
+            }
+        }
+    }
+}
+
+// Compose UI implementation
+@Composable
+fun MiningDashboard(viewModel: MiningViewModel) {
+    val uiState by viewModel.uiState.collectAsState()
+    
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        // Real-time mining stats
+        MiningStatsCard(
+            hashRate = uiState.hashRate,
+            temperature = uiState.temperature,
+            earnings = uiState.estimatedEarnings
+        )
+        
+        // Power management controls
+        PowerManagementCard(
+            batteryLevel = uiState.batteryLevel,
+            isCharging = uiState.isCharging,
+            miningIntensity = uiState.intensity
+        )
+        
+        // Main mining toggle
+        MiningToggleButton(
+            isMining = uiState.isMining,
+            onClick = { viewModel.toggleMining() }
+        )
+    }
+}
 ```
 
-**Library Dependencies:**
+**Native C++ Integration:**
+```cpp
+// mobile/android/app/src/main/cpp/shell_mining_jni.cpp
+#include <jni.h>
+#include "mobile_randomx.h"
+#include "thermal_verification.h"
+#include "arm64_optimizations.h"
+
+extern "C" {
+    // JNI bridge for mining operations
+    JNIEXPORT jlong JNICALL
+    Java_com_shell_miner_nativecode_MiningEngine_createMiner(
+        JNIEnv* env, jobject /* this */) {
+        auto* miner = new MobileXMiner();
+        miner->initialize();
+        return reinterpret_cast<jlong>(miner);
+    }
+    
+    JNIEXPORT jboolean JNICALL
+    Java_com_shell_miner_nativecode_MiningEngine_startMining(
+        JNIEnv* env, jobject /* this */, 
+        jlong minerPtr, jint intensity) {
+        
+        auto* miner = reinterpret_cast<MobileXMiner*>(minerPtr);
+        
+        // Configure ARM64 optimizations
+        miner->enableNEON();
+        miner->configureHeterogeneousCores(intensity);
+        
+        // Start mining with thermal monitoring
+        return miner->startMining(static_cast<MiningIntensity>(intensity));
+    }
+    
+    // NNAPI integration for NPU operations
+    JNIEXPORT void JNICALL
+    Java_com_shell_miner_nativecode_MiningEngine_configureNPU(
+        JNIEnv* env, jobject /* this */, jlong minerPtr) {
+        
+        auto* miner = reinterpret_cast<MobileXMiner*>(minerPtr);
+        
+        // Initialize Android NNAPI
+        ANeuralNetworksModel* model = nullptr;
+        ANeuralNetworksModel_create(&model);
+        
+        // Configure mobile-optimized neural operations
+        miner->setNPUModel(model);
+    }
+}
+```
+
+### iOS Application (Swift + C++)
+
+**Core Architecture:**
+```swift
+// mobile/ios/ShellMiner/
+// SwiftUI-based iOS application
+
+import SwiftUI
+import Combine
+
+// Main app structure
+@main
+struct ShellMinerApp: App {
+    @StateObject private var miningCoordinator = MiningCoordinator()
+    
+    var body: some Scene {
+        WindowGroup {
+            ContentView()
+                .environmentObject(miningCoordinator)
+        }
+    }
+}
+
+// Mining coordinator - manages mining lifecycle
+class MiningCoordinator: ObservableObject {
+    @Published var miningState = MiningState()
+    @Published var isMining = false
+    
+    private let miningEngine: MiningEngineProtocol
+    private let powerManager: PowerManagerProtocol
+    private let thermalManager: ThermalManagerProtocol
+    private let poolClient: PoolClientProtocol
+    
+    private var cancellables = Set<AnyCancellable>()
+    
+    init(
+        miningEngine: MiningEngineProtocol = MiningEngine(),
+        powerManager: PowerManagerProtocol = PowerManager(),
+        thermalManager: ThermalManagerProtocol = ThermalManager(),
+        poolClient: PoolClientProtocol = PoolClient()
+    ) {
+        self.miningEngine = miningEngine
+        self.powerManager = powerManager
+        self.thermalManager = thermalManager
+        self.poolClient = poolClient
+        
+        setupBindings()
+    }
+    
+    func toggleMining() {
+        if isMining {
+            stopMining()
+        } else {
+            startMining()
+        }
+    }
+    
+    private func startMining() {
+        guard powerManager.canStartMining() else {
+            showPowerAlert()
+            return
+        }
+        
+        let intensity = powerManager.optimalMiningIntensity()
+        
+        // Configure Core ML for NPU
+        miningEngine.configureNPU(with: .neuralEngine)
+        
+        // Start mining with intensity
+        miningEngine.startMining(intensity: intensity) { [weak self] result in
+            switch result {
+            case .success:
+                self?.isMining = true
+                self?.startMonitoring()
+            case .failure(let error):
+                self?.handleMiningError(error)
+            }
+        }
+    }
+}
+
+// SwiftUI Views
+struct MiningDashboardView: View {
+    @EnvironmentObject var coordinator: MiningCoordinator
+    
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                // Mining stats card
+                MiningStatsCard(state: coordinator.miningState)
+                
+                // Thermal and power status
+                DeviceStatusCard(
+                    temperature: coordinator.miningState.temperature,
+                    batteryLevel: coordinator.miningState.batteryLevel,
+                    isCharging: coordinator.miningState.isCharging
+                )
+                
+                // Earnings estimate
+                EarningsCard(
+                    currentEarnings: coordinator.miningState.estimatedEarnings,
+                    projectedDaily: coordinator.miningState.projectedDailyEarnings
+                )
+                
+                // Mining control
+                MiningControlButton(
+                    isActive: coordinator.isMapping,
+                    action: coordinator.toggleMining
+                )
+            }
+            .padding()
+        }
+        .navigationTitle("Shell Miner")
+    }
+}
+```
+
+**Native C++ Bridge:**
+```cpp
+// mobile/ios/MiningEngine/shell_mining_bridge.mm
+// Objective-C++ bridge for Swift interop
+
+#import "ShellMiningBridge.h"
+#import "mobile_randomx.h"
+#import "thermal_verification.h"
+#import <CoreML/CoreML.h>
+
+@implementation ShellMiningBridge {
+    std::unique_ptr<MobileXMiner> _miner;
+    MLModel* _npuModel;
+}
+
+- (instancetype)init {
+    self = [super init];
+    if (self) {
+        _miner = std::make_unique<MobileXMiner>();
+        _miner->initialize();
+    }
+    return self;
+}
+
+- (BOOL)startMiningWithIntensity:(NSInteger)intensity 
+                      completion:(void (^)(BOOL success, NSError* error))completion {
+    
+    // Configure ARM64 optimizations for Apple Silicon
+    _miner->enableNEON();
+    _miner->enableAMX(); // Apple Matrix coprocessor
+    
+    // Configure heterogeneous cores (P-cores and E-cores)
+    _miner->configureHeterogeneousCores(static_cast<int>(intensity));
+    
+    // Start mining
+    bool success = _miner->startMining(static_cast<MiningIntensity>(intensity));
+    
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (success) {
+            completion(YES, nil);
+        } else {
+            NSError* error = [NSError errorWithDomain:@"ShellMining" 
+                                                code:1001 
+                                            userInfo:@{NSLocalizedDescriptionKey: @"Failed to start mining"}];
+            completion(NO, error);
+        }
+    });
+    
+    return success;
+}
+
+- (void)configureNPUWithCoreML {
+    // Load Core ML model for NPU operations
+    NSError* error = nil;
+    NSURL* modelURL = [[NSBundle mainBundle] URLForResource:@"MobileXNPU" 
+                                              withExtension:@"mlmodelc"];
+    
+    _npuModel = [MLModel modelWithContentsOfURL:modelURL error:&error];
+    
+    if (_npuModel) {
+        // Configure mining engine to use Core ML
+        _miner->setNPUProvider(std::make_unique<CoreMLNPUProvider>(_npuModel));
+    }
+}
+
+@end
+```
+
+**Shared Library Dependencies:**
 ```yaml
-# Proven libraries to adapt/integrate
-# ⏳ All integrations pending
+# mobile/dependencies.yaml
+# Proven libraries to integrate
+
+android:
+  - com.google.android.neural-networks-api:1.3.0  # NNAPI for NPU
+  - org.bitcoinj:bitcoinj-core:0.16.2            # Adapt for SPV wallet
+  - com.squareup.okhttp3:okhttp:4.11.0           # Network communication
+  - org.jetbrains.kotlinx:kotlinx-coroutines:1.7.3
+  
+ios:
+  - CoreML.framework                              # NPU integration
+  - CryptoKit.framework                           # Cryptographic operations
+  - Network.framework                             # Modern networking
+  
+shared_cpp:
+  - randomx: https://github.com/tevador/RandomX  # Base mining algorithm
+  - secp256k1: https://github.com/bitcoin-core/secp256k1  # Signatures
+  - openssl: 3.0.10                              # Hashing and crypto
+  - bulletproofs: custom_fork                    # CT support
+```
+
+**Power & Thermal Management:**
+```kotlin
+// Android: PowerManager.kt
+class PowerManager @Inject constructor(
+    private val context: Context,
+    private val batteryManager: BatteryManager
+) {
+    fun determineOptimalIntensity(): MiningIntensity {
+        val batteryLevel = getBatteryLevel()
+        val isCharging = isCharging()
+        val thermalStatus = getThermalStatus()
+        
+        return when {
+            !isCharging -> MiningIntensity.DISABLED
+            batteryLevel < 80 -> MiningIntensity.DISABLED
+            thermalStatus >= PowerManager.THERMAL_STATUS_MODERATE -> MiningIntensity.LIGHT
+            batteryLevel > 95 && thermalStatus == PowerManager.THERMAL_STATUS_NONE -> MiningIntensity.FULL
+            batteryLevel > 85 -> MiningIntensity.MEDIUM
+            else -> MiningIntensity.LIGHT
+        }
+    }
+}
+```
+
+```swift
+// iOS: PowerManager.swift
+class PowerManager: PowerManagerProtocol {
+    func optimalMiningIntensity() -> MiningIntensity {
+        let batteryLevel = UIDevice.current.batteryLevel * 100
+        let batteryState = UIDevice.current.batteryState
+        let thermalState = ProcessInfo.processInfo.thermalState
+        
+        switch (batteryState, batteryLevel, thermalState) {
+        case (.charging, 95..., .nominal):
+            return .full
+        case (.charging, 85..., .nominal):
+            return .medium
+        case (.charging, 80..., .nominal):
+            return .light
+        case (.charging, _, .fair...):
+            return .light  // Thermal throttling
+        default:
+            return .disabled
+        }
+    }
+}
 ```
 
 **Deliverables:**
-- ⏳ Native Android mining app (Kotlin + C++)
-- ⏳ Native iOS mining app (Swift + C++)
-- ⏳ Shared C++ mining core
-- ⏳ NPU integration (NNAPI/Core ML)
-- ⏳ SPV light wallet functionality
-- ⏳ Power management
-- ⏳ App store submission preparation
+- ⏳ Native Android app (Kotlin + Jetpack Compose + C++)
+- ⏳ Native iOS app (Swift + SwiftUI + C++)
+- ⏳ Shared C++ mining core with mobile optimizations
+- ⏳ NNAPI integration for Android NPU access
+- ⏳ Core ML integration for iOS Neural Engine
+- ⏳ SPV wallet (adapted from BitcoinJ/BitcoinKit)
+- ⏳ Advanced power/thermal management
+- ⏳ App Store/Play Store compliance and submission
 
 #### Milestone B2: Network Integration & Dual-Algorithm Support (Month 7) ⏳ **NOT STARTED**
 
@@ -564,19 +977,19 @@ Based on the implementation strategy:
 Shell Go Codebase - Runs on Servers/Full Nodes:
 ├── ✅ Blockchain Infrastructure
 │   ├── ✅ Block validation and consensus (with thermal proof validation)
-│   ├── UTXO management and state
-│   ├── Network protocol (P2P)
-│   └── Chain synchronization
-├── ⏳ Mining Pool Servers
-│   ├── Work distribution (getblocktemplate)
-│   ├── Share validation
-│   ├── Difficulty adjustment
-│   └── Reward distribution
-├── Full Node Services
-│   ├── RPC/REST APIs
-│   ├── Block explorer backend
-│   ├── Network monitoring
-│   └── Transaction relay
+│   ├── ✅ UTXO management and state
+│   ├── ✅ Network protocol (P2P)
+│   └── ✅ Chain synchronization
+├── ⏳ Mining Pool Servers (Phase Beta)
+│   ├── ⏳ Work distribution (getblocktemplate)
+│   ├── ⏳ Share validation
+│   ├── ⏳ Difficulty adjustment
+│   └── ⏳ Reward distribution
+├── ⏳ Full Node Services (Phase Beta)
+│   ├── ⏳ RPC/REST APIs for mobile mining
+│   ├── ⏳ Block explorer backend
+│   ├── ⏳ Network monitoring
+│   └── ⏳ Transaction relay
 └── ✅ Reference Implementation
     ├── ✅ Protocol specification (BlockHeader with ThermalProof)
     ├── ✅ Validation rules (thermal proof validation)
@@ -1308,10 +1721,10 @@ Shell Reserve Mobile PoW Implementation
 │       │   │   └── cpu_neural.go
 │       │   └── models/              # Neural network models
 │       │       └── mobilex_conv.go
-│       ├── pool/                    # Mobile mining pool protocol
-│       │   ├── mobile_stratum.go
-│       │   ├── thermal_submission.go
-│       │   └── power_aware_scheduling.go
+│       ├── pool/                    # Mobile mining pool protocol (Phase Beta - NOT IMPLEMENTED)
+│       │   ├── mobile_stratum.go    # ⏳ Pending
+│       │   ├── thermal_submission.go # ⏳ Pending
+│       │   └── power_aware_scheduling.go # ⏳ Pending
 │       └── testing/                 # Comprehensive testing suite
 │           ├── integration/
 │           ├── security/
