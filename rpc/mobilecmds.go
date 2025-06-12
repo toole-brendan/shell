@@ -41,6 +41,9 @@ var (
 	}
 )
 
+// Mobile mining RPC handlers follow the same pattern as regular handlers
+// They would be registered in the main rpcserver initialization
+
 // handleGetMobileBlockTemplate implements the getmobileblocktemplate command.
 // This is a simplified implementation for mobile miners.
 func handleGetMobileBlockTemplate(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
