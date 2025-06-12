@@ -154,6 +154,10 @@ const (
 	// institutional vault covenants.
 	DeploymentVaultCovenants
 
+	// DeploymentMobileX defines the rule change deployment for
+	// mobile-optimized proof-of-work mining.
+	DeploymentMobileX
+
 	// DeploymentTestDummyMinActivation defines the minimum activation height
 	// for test deployments.
 	DeploymentTestDummyMinActivation
@@ -235,6 +239,15 @@ type Params struct {
 	// RandomX parameters for CPU-friendly mining
 	RandomXSeedRotation int32 // Blocks between seed changes
 	RandomXMemory       int64 // Memory requirement (2GB)
+
+	// MobileX parameters for mobile-optimized mining
+	MobileXEnabled          bool  // Enable MobileX algorithm
+	MobileXSeedRotation     int32 // MobileX seed rotation (aligned with RandomX)
+	MobileXMemoryLightMode  int64 // Light mode memory (256MB for mobile devices)
+	MobileXMemoryFastMode   int64 // Fast mode memory (2GB for high-end devices)
+	MobileXNPUInterval      int32 // NPU operations interval (100-200 iterations)
+	MobileXThermalEnforced  bool  // Enable thermal verification enforcement
+	MobileXThermalTolerance int32 // Thermal proof tolerance percentage (±5%)
 
 	// Layer activation heights
 	L1ActivationHeight      int32 // Payment channels from genesis
@@ -368,9 +381,19 @@ var MainNetParams = Params{
 	RandomXSeedRotation: 2048,                   // Seed rotation every 2048 blocks
 	RandomXMemory:       2 * 1024 * 1024 * 1024, // 2GB memory requirement
 
+	// MobileX parameters (initially disabled, activated via deployment)
+	MobileXEnabled:          false,                  // Disabled until deployment activation
+	MobileXSeedRotation:     2048,                   // Aligned with RandomX
+	MobileXMemoryLightMode:  256 * 1024 * 1024,      // 256MB for budget mobile devices
+	MobileXMemoryFastMode:   2 * 1024 * 1024 * 1024, // 2GB for flagship mobile devices
+	MobileXNPUInterval:      150,                    // NPU operations every 150 iterations
+	MobileXThermalEnforced:  true,                   // Enforce thermal compliance
+	MobileXThermalTolerance: 5,                      // ±5% thermal proof tolerance
+
 	// Layer activation heights
-	L1ActivationHeight:  0,      // Payment channels from genesis
-	L05ActivationHeight: 525600, // Privacy layer after ~10 years
+	L1ActivationHeight:      0,       // Payment channels from genesis
+	L05ActivationHeight:     525600,  // Privacy layer after ~10 years
+	MobileXActivationHeight: 1051200, // Mobile mining after ~10 years
 
 	// Checkpoints ordered from oldest to newest (empty for new network)
 	Checkpoints: []Checkpoint{},
@@ -460,6 +483,17 @@ var MainNetParams = Params{
 			),
 			DeploymentEnder: NewMedianTimeDeploymentEnder(
 				time.Time{}, // Never expires
+			),
+		},
+		DeploymentMobileX: {
+			BitNumber:                 7,
+			MinActivationHeight:       1051200, // ~10 years after Shell launch for maturity
+			CustomActivationThreshold: 274,     // 95% threshold (same as other features)
+			DeploymentStarter: NewMedianTimeDeploymentStarter(
+				time.Date(2027, 1, 1, 0, 0, 0, 0, time.UTC), // 1 year after Shell launch
+			),
+			DeploymentEnder: NewMedianTimeDeploymentEnder(
+				time.Date(2028, 1, 1, 0, 0, 0, 0, time.UTC), // 1-year activation window
 			),
 		},
 	},

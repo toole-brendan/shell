@@ -57,8 +57,31 @@ const (
 	hashUpdateSecs = 15
 )
 
+// MiningAlgorithm represents the type of mining algorithm to use
+type MiningAlgorithm int
+
+const (
+	// AlgorithmRandomX uses standard RandomX mining
+	AlgorithmRandomX MiningAlgorithm = iota
+	// AlgorithmMobileX uses mobile-optimized mining
+	AlgorithmMobileX
+	// AlgorithmDual uses both RandomX and MobileX (dual-algorithm support)
+	AlgorithmDual
+)
+
+// MobileMiner defines the interface for mobile-optimized miners
+// This allows the RandomX miner to integrate with MobileX without circular imports
+type MobileMiner interface {
+	SolveBlock(msgBlock *wire.MsgBlock, blockHeight int32, ticker *time.Ticker, quit chan struct{}) (bool, error)
+	GetHashRate() float64
+	Start() error
+	Stop()
+	Close()
+}
+
 // RandomXMiner provides facilities for solving blocks (mining) using RandomX
-// proof-of-work in a concurrent manner with CPU cores.
+// proof-of-work in a concurrent manner with CPU cores. It also supports
+// MobileX algorithm integration for dual-algorithm mining.
 type RandomXMiner struct {
 	cache            *Cache
 	dataset          *Dataset
@@ -73,6 +96,11 @@ type RandomXMiner struct {
 	speedMonitorQuit chan struct{}
 	quit             chan struct{}
 	mutex            sync.Mutex
+
+	// MobileX integration (via interface to avoid circular imports)
+	mobileMiner    MobileMiner
+	algorithm      MiningAlgorithm
+	mobileXEnabled bool
 }
 
 // NewRandomXMiner returns a new instance of a RandomX miner.
@@ -83,7 +111,24 @@ func NewRandomXMiner(memoryMB int64) *RandomXMiner {
 		updateHashes:     make(chan uint64),
 		speedMonitorQuit: make(chan struct{}),
 		quit:             make(chan struct{}),
+		algorithm:        AlgorithmRandomX, // Default to RandomX only
+		mobileXEnabled:   false,
 	}
+}
+
+// NewRandomXMinerWithMobile returns a new instance of a RandomX miner with MobileX support.
+func NewRandomXMinerWithMobile(memoryMB int64, mobileMiner MobileMiner, algorithm MiningAlgorithm) *RandomXMiner {
+	miner := &RandomXMiner{
+		memory:           memoryMB * 1024 * 1024, // Convert MB to bytes
+		seedHeight:       -1,                     // Initialize with invalid height
+		updateHashes:     make(chan uint64),
+		speedMonitorQuit: make(chan struct{}),
+		quit:             make(chan struct{}),
+		mobileMiner:      mobileMiner,
+		algorithm:        algorithm,
+		mobileXEnabled:   mobileMiner != nil,
+	}
+	return miner
 }
 
 // speedMonitor handles tracking the number of hashes per second the mining
@@ -223,7 +268,42 @@ func (m *RandomXMiner) updateSeed(height int32, rotation int32, genesisHash *cha
 // a value less than the target difficulty.  When a successful solution is found
 // true is returned and the nonce field of the passed header is updated with the
 // solution.  False is returned if no solution exists.
+//
+// This method now supports dual-algorithm mining with MobileX integration.
 func (m *RandomXMiner) solveBlock(msgBlock *wire.MsgBlock, blockHeight int32,
+	ticker *time.Ticker, quit chan struct{}, params *RandomXParams) bool {
+
+	// Determine which algorithm to use
+	switch m.algorithm {
+	case AlgorithmMobileX:
+		// Use MobileX exclusively
+		if m.mobileMiner != nil {
+			found, err := m.mobileMiner.SolveBlock(msgBlock, blockHeight, ticker, quit)
+			if err != nil {
+				log.Errorf("MobileX mining error: %v", err)
+				return false
+			}
+			return found
+		}
+		log.Warnf("MobileX mining requested but no mobile miner available, falling back to RandomX")
+		fallthrough
+
+	case AlgorithmRandomX:
+		// Use RandomX exclusively
+		return m.solveBlockRandomX(msgBlock, blockHeight, ticker, quit, params)
+
+	case AlgorithmDual:
+		// Dual-algorithm mining: try both RandomX and MobileX
+		return m.solveBlockDual(msgBlock, blockHeight, ticker, quit, params)
+
+	default:
+		log.Errorf("Unknown mining algorithm: %v", m.algorithm)
+		return false
+	}
+}
+
+// solveBlockRandomX performs standard RandomX mining
+func (m *RandomXMiner) solveBlockRandomX(msgBlock *wire.MsgBlock, blockHeight int32,
 	ticker *time.Ticker, quit chan struct{}, params *RandomXParams) bool {
 
 	// Get a local copy of the header so we can update the nonce while
@@ -286,6 +366,82 @@ func (m *RandomXMiner) solveBlock(msgBlock *wire.MsgBlock, blockHeight int32,
 	}
 
 	return false
+}
+
+// solveBlockDual performs dual-algorithm mining (RandomX + MobileX)
+func (m *RandomXMiner) solveBlockDual(msgBlock *wire.MsgBlock, blockHeight int32,
+	ticker *time.Ticker, quit chan struct{}, params *RandomXParams) bool {
+
+	if m.mobileMiner == nil {
+		log.Warnf("Dual mining requested but no mobile miner available, using RandomX only")
+		return m.solveBlockRandomX(msgBlock, blockHeight, ticker, quit, params)
+	}
+
+	// Create channels for coordination between RandomX and MobileX workers
+	randomXQuit := make(chan struct{})
+	mobileXQuit := make(chan struct{})
+	solutionFound := make(chan bool, 2)
+
+	// Start RandomX mining in goroutine
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Errorf("RandomX mining panic: %v", r)
+				solutionFound <- false
+			}
+		}()
+
+		found := m.solveBlockRandomX(msgBlock, blockHeight, ticker, randomXQuit, params)
+		if found {
+			close(mobileXQuit) // Stop MobileX if RandomX found solution
+		}
+		solutionFound <- found
+	}()
+
+	// Start MobileX mining in goroutine
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Errorf("MobileX mining panic: %v", r)
+				solutionFound <- false
+			}
+		}()
+
+		found, err := m.mobileMiner.SolveBlock(msgBlock, blockHeight, ticker, mobileXQuit)
+		if err != nil {
+			log.Errorf("MobileX mining error: %v", err)
+			solutionFound <- false
+			return
+		}
+		if found {
+			close(randomXQuit) // Stop RandomX if MobileX found solution
+		}
+		solutionFound <- found
+	}()
+
+	// Wait for either algorithm to find a solution or quit signal
+	for {
+		select {
+		case <-quit:
+			close(randomXQuit)
+			close(mobileXQuit)
+			return false
+
+		case found := <-solutionFound:
+			if found {
+				// Solution found by one of the algorithms
+				close(randomXQuit)
+				close(mobileXQuit)
+				return true
+			}
+			// If we get false from one algorithm, continue waiting for the other
+			// Both algorithms will send to solutionFound, so we need to handle both
+
+		case <-ticker.C:
+			// Update metrics periodically
+			// Let each algorithm handle its own metrics
+		}
+	}
 }
 
 // hashBlockHeader hashes a block header using RandomX.
@@ -482,7 +638,19 @@ func (m *RandomXMiner) Start(cfg *Config) {
 		return
 	}
 
-	log.Infof("Starting RandomX miner with %d workers", cfg.NumWorkers)
+	log.Infof("Starting RandomX miner with %d workers (Algorithm: %v, MobileX enabled: %v)",
+		cfg.NumWorkers, m.algorithm, m.mobileXEnabled)
+
+	// Start mobile miner if enabled
+	if m.mobileXEnabled && m.mobileMiner != nil {
+		if err := m.mobileMiner.Start(); err != nil {
+			log.Errorf("Failed to start mobile miner: %v", err)
+			// Continue with RandomX only
+			m.mobileXEnabled = false
+		} else {
+			log.Infof("Mobile miner started successfully")
+		}
+	}
 
 	m.quit = make(chan struct{})
 	m.speedMonitorQuit = make(chan struct{})
@@ -498,35 +666,28 @@ func (m *RandomXMiner) Start(cfg *Config) {
 // speed monitor to quit.  Calling this function when the miner has not already
 // been started will have no effect.
 //
-// The function does not return until all workers and the speed monitor have
-// finished running.
+// This function will block until all workers and the speed monitor have
+// finished.
 func (m *RandomXMiner) Stop() {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
-	// Nothing to do if the miner is not currently running.
+	// Nothing to do if the miner is not currently running or if running in
+	// discrete mode (using generateNBlocks).
 	if !m.started {
 		return
 	}
 
-	log.Infof("Stopping RandomX miner...")
+	log.Infof("Stopping RandomX miner")
+
+	// Stop mobile miner if running
+	if m.mobileXEnabled && m.mobileMiner != nil {
+		m.mobileMiner.Stop()
+		log.Infof("Mobile miner stopped")
+	}
+
 	close(m.quit)
 	m.wg.Wait()
-
-	// Clean up RandomX resources
-	if m.vm != nil {
-		m.vm.Close()
-		m.vm = nil
-	}
-	if m.dataset != nil {
-		m.dataset.Close()
-		m.dataset = nil
-	}
-	if m.cache != nil {
-		m.cache.Close()
-		m.cache = nil
-	}
-
 	m.started = false
 	log.Infof("RandomX miner stopped")
 }
@@ -569,4 +730,60 @@ func (m *RandomXMiner) SetNumWorkers(numWorkers int32) {
 
 	// Don't lock here since the speed monitor and worker controller will
 	// handle switching the number of workers dynamically.
+}
+
+// SetMobileMiner sets the mobile miner for dual-algorithm support
+func (m *RandomXMiner) SetMobileMiner(mobileMiner MobileMiner) {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	// Stop old mobile miner if running
+	if m.mobileMiner != nil && m.mobileXEnabled {
+		m.mobileMiner.Stop()
+	}
+
+	m.mobileMiner = mobileMiner
+	m.mobileXEnabled = mobileMiner != nil
+
+	log.Infof("Mobile miner %s", func() string {
+		if mobileMiner != nil {
+			return "enabled"
+		}
+		return "disabled"
+	}())
+}
+
+// SetAlgorithm sets the mining algorithm
+func (m *RandomXMiner) SetAlgorithm(algorithm MiningAlgorithm) {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	m.algorithm = algorithm
+	log.Infof("Mining algorithm set to: %v", algorithm)
+}
+
+// GetAlgorithm returns the current mining algorithm
+func (m *RandomXMiner) GetAlgorithm() MiningAlgorithm {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+	return m.algorithm
+}
+
+// IsMobileXEnabled returns whether MobileX mining is enabled
+func (m *RandomXMiner) IsMobileXEnabled() bool {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+	return m.mobileXEnabled && m.mobileMiner != nil
+}
+
+// GetCombinedHashRate returns the combined hash rate from both RandomX and MobileX
+func (m *RandomXMiner) GetCombinedHashRate() (randomXRate, mobileXRate, totalRate float64) {
+	randomXRate = m.HashesPerSecond()
+
+	if m.mobileXEnabled && m.mobileMiner != nil {
+		mobileXRate = m.mobileMiner.GetHashRate()
+	}
+
+	totalRate = randomXRate + mobileXRate
+	return
 }
