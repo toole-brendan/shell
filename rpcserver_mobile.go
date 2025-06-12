@@ -5,6 +5,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
@@ -18,6 +19,7 @@ import (
 	"github.com/toole-brendan/shell/btcjson"
 	"github.com/toole-brendan/shell/chaincfg/chainhash"
 	"github.com/toole-brendan/shell/mining/mobilex"
+	"github.com/toole-brendan/shell/wire"
 )
 
 // Mobile mining state tracking
@@ -134,8 +136,17 @@ func handleSubmitMobileBlock(s *rpcServer, cmd interface{}, closeChan <-chan str
 		thermal := mobilex.NewThermalVerification(2000, 5.0)
 		thermal.UpdateTemperature(c.ThermalProof.Temperature)
 
-		header := block.MsgBlock().Header
-		if err := thermal.ValidateThermalProof(&header); err != nil {
+		// Get the header directly from Shell's wire.MsgBlock
+		msgBlock := &wire.MsgBlock{}
+		err := msgBlock.Deserialize(bytes.NewReader(blockBytes))
+		if err != nil {
+			return nil, &btcjson.RPCError{
+				Code:    btcjson.ErrRPCDeserialization,
+				Message: fmt.Sprintf("block deserialize failed: %v", err),
+			}
+		}
+
+		if err := thermal.ValidateThermalProof(&msgBlock.Header); err != nil {
 			mobileState.Lock()
 			mobileState.thermalViolations++
 			mobileState.Unlock()
@@ -153,8 +164,8 @@ func handleSubmitMobileBlock(s *rpcServer, cmd interface{}, closeChan <-chan str
 		mobileState.Unlock()
 	}
 
-	// Process the block
-	isOrphan, err := s.cfg.Chain.ProcessBlock(block, blockchain.BFNone)
+	// Process the block - handle all 3 return values
+	_, isOrphan, err := s.cfg.Chain.ProcessBlock(block, blockchain.BFNone)
 	if err != nil {
 		return nil, &btcjson.RPCError{
 			Code:    btcjson.ErrRPCVerify,
@@ -267,16 +278,33 @@ func handleValidateThermalProof(s *rpcServer, cmd interface{}, closeChan <-chan 
 		}
 	}
 
+	// Get block bytes and deserialize using Shell's wire package
+	blockBytes, err := block.Bytes()
+	if err != nil {
+		return nil, &btcjson.RPCError{
+			Code:    btcjson.ErrRPCInternal.Code,
+			Message: "failed to serialize block",
+		}
+	}
+
+	msgBlock := &wire.MsgBlock{}
+	err = msgBlock.Deserialize(bytes.NewReader(blockBytes))
+	if err != nil {
+		return nil, &btcjson.RPCError{
+			Code:    btcjson.ErrRPCDeserialization,
+			Message: "block deserialize failed",
+		}
+	}
+
 	// Create thermal verifier
 	thermal := mobilex.NewThermalVerification(2000, 5.0)
 
 	// Validate the thermal proof
-	header := block.MsgBlock().Header
-	if header.ThermalProof != c.ThermalProof {
+	if msgBlock.Header.ThermalProof != c.ThermalProof {
 		return false, nil
 	}
 
-	err = thermal.ValidateThermalProof(&header)
+	err = thermal.ValidateThermalProof(&msgBlock.Header)
 	return err == nil, nil
 }
 
